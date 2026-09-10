@@ -168,12 +168,16 @@ required.
 ## Implementation status
 
 This project is being built step-by-step. See commit history / conversation
-for progress. Current step: **Step 9 — Structure + Authorization APIs**
-(`POST/GET /structures`, `GET /structures/{id}`, `GET /authorization/check`,
-`POST/DELETE /authorization/grant`). Structure's business data lives in
-the app DB; its parent Zone is an OpenFGA tuple only. Authorization
-decisions are entirely OpenFGA's — the full Client → Project → recursive
-Zone → Structure inheritance path, direct grants at any level, and
-fail-closed behavior are all demonstrated end-to-end. No Project CRUD API
-exists yet, so tests write the `project#parent@client` tuple directly
-(the one thing such an endpoint would do) rather than building it now.
+for progress. Current step: **Step 10 — Tree + Security + Audit**
+(`GET /clients/{client_id}/tree`). Returns an authorization-pruned resource
+tree: a node appears if the requesting user can view it directly/by
+inheritance, or if any descendant can be viewed (so an ancestor the user
+has no direct grant on can still render as a pass-through container on
+the path to something they can see — e.g. a zone-level grant three levels
+deep still needs the client/project nodes to attach to). Anti-enumeration:
+a nonexistent client and a client the user has zero visibility into
+produce an identical 404. Every access attempt is audited (`tree.access`,
+`success`/`denied` with an internal-only reason, never exposed to the
+caller) and OpenFGA outages fail closed (503, never a masked 200/404).
+No Project CRUD API exists yet, so tests write the single
+`project#parent@client` tuple directly, as in Steps 8–9.
