@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from app.api.authorization import router as authorization_router
 from app.api.clients import router as clients_router
+from app.api.projects import router as projects_router
 from app.api.structures import router as structures_router
 from app.api.tree import router as tree_router
 from app.api.zones import router as zones_router
@@ -42,6 +43,7 @@ app = FastAPI(
 
 
 app.include_router(clients_router)
+app.include_router(projects_router)
 app.include_router(zones_router)
 app.include_router(structures_router)
 app.include_router(authorization_router)

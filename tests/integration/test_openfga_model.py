@@ -1,13 +1,19 @@
 """Verifies the core ReBAC behaviors of the OpenFGA authorization model
 against a live OpenFGA instance, using the hierarchy:
 
-    client:govt-of-india
-        -> project:indian-railway
-            -> zone:north
-                -> zone:delhi
-                    -> zone:central
-                        -> structure:yamuna-bridge
-            -> zone:south (sibling branch)
+    client:modeltest-client
+        -> project:modeltest-project
+            -> zone:modeltest-north
+                -> zone:modeltest-delhi
+                    -> zone:modeltest-central
+                        -> structure:modeltest-bridge
+            -> zone:modeltest-south (sibling branch)
+
+Object ids are prefixed "modeltest-" (not e.g. "govt-of-india") so this
+test's tuples never collide with scripts/seed_demo.py's real demo data if
+both happen to exist in the same OpenFGA store at once — OpenFGA rejects
+writing an already-existing identical tuple, so a shared id would break
+this fixture's setup.
 
 Requires the docker-compose OpenFGA stack to be running with
 FGA_STORE_ID/FGA_MODEL_ID set (see scripts/bootstrap_openfga.py).
@@ -23,12 +29,12 @@ from openfga_sdk.sync.client.client import OpenFgaClient
 from app.core.config import get_settings
 
 HIERARCHY_TUPLES = [
-    ClientTuple(user="client:govt-of-india", relation="parent", object="project:indian-railway"),
-    ClientTuple(user="project:indian-railway", relation="parent", object="zone:north"),
-    ClientTuple(user="zone:north", relation="parent", object="zone:delhi"),
-    ClientTuple(user="zone:delhi", relation="parent", object="zone:central"),
-    ClientTuple(user="project:indian-railway", relation="parent", object="zone:south"),
-    ClientTuple(user="zone:central", relation="parent", object="structure:yamuna-bridge"),
+    ClientTuple(user="client:modeltest-client", relation="parent", object="project:modeltest-project"),
+    ClientTuple(user="project:modeltest-project", relation="parent", object="zone:modeltest-north"),
+    ClientTuple(user="zone:modeltest-north", relation="parent", object="zone:modeltest-delhi"),
+    ClientTuple(user="zone:modeltest-delhi", relation="parent", object="zone:modeltest-central"),
+    ClientTuple(user="project:modeltest-project", relation="parent", object="zone:modeltest-south"),
+    ClientTuple(user="zone:modeltest-central", relation="parent", object="structure:modeltest-bridge"),
 ]
 
 
@@ -59,59 +65,59 @@ def hierarchy(fga_client):
 
 
 def test_recursive_zone_downward_inheritance_reaches_structure(fga_client, hierarchy):
-    """A viewer grant at zone:north (the topmost zone) must reach a structure
-    three zone-levels below it: zone:north -> zone:delhi -> zone:central ->
-    structure:yamuna-bridge."""
-    grant = [ClientTuple(user="user:alice", relation="viewer", object="zone:north")]
+    """A viewer grant at zone:modeltest-north (the topmost zone) must reach
+    a structure three zone-levels below it: north -> delhi -> central ->
+    structure."""
+    grant = [ClientTuple(user="user:modeltest-alice", relation="viewer", object="zone:modeltest-north")]
     fga_client.write(ClientWriteRequest(writes=grant))
     try:
-        assert check(fga_client, "user:alice", "viewer", "zone:north")
-        assert check(fga_client, "user:alice", "viewer", "zone:delhi")
-        assert check(fga_client, "user:alice", "viewer", "zone:central")
-        assert check(fga_client, "user:alice", "viewer", "structure:yamuna-bridge")
+        assert check(fga_client, "user:modeltest-alice", "viewer", "zone:modeltest-north")
+        assert check(fga_client, "user:modeltest-alice", "viewer", "zone:modeltest-delhi")
+        assert check(fga_client, "user:modeltest-alice", "viewer", "zone:modeltest-central")
+        assert check(fga_client, "user:modeltest-alice", "viewer", "structure:modeltest-bridge")
     finally:
         fga_client.write(ClientWriteRequest(deletes=grant))
 
 
 def test_no_cross_branch_inheritance(fga_client, hierarchy):
-    """A viewer grant at zone:north must not leak to the sibling zone:south."""
-    grant = [ClientTuple(user="user:alice", relation="viewer", object="zone:north")]
+    """A viewer grant at zone:modeltest-north must not leak to the sibling
+    zone:modeltest-south."""
+    grant = [ClientTuple(user="user:modeltest-alice", relation="viewer", object="zone:modeltest-north")]
     fga_client.write(ClientWriteRequest(writes=grant))
     try:
-        assert not check(fga_client, "user:alice", "viewer", "zone:south")
+        assert not check(fga_client, "user:modeltest-alice", "viewer", "zone:modeltest-south")
     finally:
         fga_client.write(ClientWriteRequest(deletes=grant))
 
 
 def test_no_upward_inheritance_from_structure(fga_client, hierarchy):
-    """A viewer grant at structure:yamuna-bridge only must not reach any
-    ancestor: zone:central, zone:delhi, zone:north, the project, or the
-    client."""
-    grant = [ClientTuple(user="user:carlos", relation="viewer", object="structure:yamuna-bridge")]
+    """A viewer grant at structure:modeltest-bridge only must not reach any
+    ancestor: the central/delhi/north zones, the project, or the client."""
+    grant = [ClientTuple(user="user:modeltest-carlos", relation="viewer", object="structure:modeltest-bridge")]
     fga_client.write(ClientWriteRequest(writes=grant))
     try:
-        assert check(fga_client, "user:carlos", "viewer", "structure:yamuna-bridge")
-        assert not check(fga_client, "user:carlos", "viewer", "zone:central")
-        assert not check(fga_client, "user:carlos", "viewer", "zone:delhi")
-        assert not check(fga_client, "user:carlos", "viewer", "zone:north")
-        assert not check(fga_client, "user:carlos", "viewer", "project:indian-railway")
-        assert not check(fga_client, "user:carlos", "viewer", "client:govt-of-india")
+        assert check(fga_client, "user:modeltest-carlos", "viewer", "structure:modeltest-bridge")
+        assert not check(fga_client, "user:modeltest-carlos", "viewer", "zone:modeltest-central")
+        assert not check(fga_client, "user:modeltest-carlos", "viewer", "zone:modeltest-delhi")
+        assert not check(fga_client, "user:modeltest-carlos", "viewer", "zone:modeltest-north")
+        assert not check(fga_client, "user:modeltest-carlos", "viewer", "project:modeltest-project")
+        assert not check(fga_client, "user:modeltest-carlos", "viewer", "client:modeltest-client")
     finally:
         fga_client.write(ClientWriteRequest(deletes=grant))
 
 
 def test_direct_client_viewer_inherits_down_to_project(fga_client, hierarchy):
-    grant = [ClientTuple(user="user:bob", relation="viewer", object="client:govt-of-india")]
+    grant = [ClientTuple(user="user:modeltest-bob", relation="viewer", object="client:modeltest-client")]
     fga_client.write(ClientWriteRequest(writes=grant))
     try:
-        assert check(fga_client, "user:bob", "viewer", "client:govt-of-india")
-        assert check(fga_client, "user:bob", "viewer", "project:indian-railway")
-        assert check(fga_client, "user:bob", "viewer", "zone:north")
-        assert check(fga_client, "user:bob", "viewer", "structure:yamuna-bridge")
+        assert check(fga_client, "user:modeltest-bob", "viewer", "client:modeltest-client")
+        assert check(fga_client, "user:modeltest-bob", "viewer", "project:modeltest-project")
+        assert check(fga_client, "user:modeltest-bob", "viewer", "zone:modeltest-north")
+        assert check(fga_client, "user:modeltest-bob", "viewer", "structure:modeltest-bridge")
     finally:
         fga_client.write(ClientWriteRequest(deletes=grant))
 
 
 def test_no_grant_denies_access(fga_client, hierarchy):
-    assert not check(fga_client, "user:nobody", "viewer", "structure:yamuna-bridge")
-    assert not check(fga_client, "user:nobody", "viewer", "zone:north")
+    assert not check(fga_client, "user:modeltest-nobody", "viewer", "structure:modeltest-bridge")
+    assert not check(fga_client, "user:modeltest-nobody", "viewer", "zone:modeltest-north")

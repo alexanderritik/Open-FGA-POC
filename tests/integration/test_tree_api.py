@@ -96,8 +96,11 @@ async def hierarchy(api_client, fga_cleanup):
         "structure_other": _uid("tt-structure"),
     }
 
-    session.add(Client(id=ids["client_a"], name="Govt of India"))
-    session.add(Client(id=ids["client_b"], name="Other Government"))
+    # Client.name is globally unique (uq_clients_name); derive it from the
+    # per-test random id so concurrent/repeated runs (and any real demo data
+    # from scripts/seed_demo.py sitting in the same database) never collide.
+    session.add(Client(id=ids["client_a"], name=f"Tree Test Client A {ids['client_a']}"))
+    session.add(Client(id=ids["client_b"], name=f"Tree Test Client B {ids['client_b']}"))
     session.add(Project(id=ids["project_a"], client_id=ids["client_a"], name="Indian Railway"))
     session.add(Project(id=ids["project_b"], client_id=ids["client_b"], name="Other Railway"))
     session.commit()

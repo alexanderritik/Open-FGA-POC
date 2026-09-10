@@ -1,0 +1,1443 @@
+{
+  "info": {
+    "_postman_id": "7652b0f2-4211-4ffc-8930-babb53cd89e5",
+    "name": "OpenFGA ReBAC New Architecture",
+    "description": "OpenFGA ReBAC Authorization PoC.\n\nArchitecture: Application PostgreSQL holds business data only (users, clients, projects, structures, audit_events). OpenFGA holds all authorization relationships and the entire Zone hierarchy -- Zone has no table and no ORM model anywhere in this project.\n\nNo authentication: user identity is supplied directly as a string (e.g. user:parth) to authorization-aware endpoints. There are no auth headers in this collection.\n\nRun scripts/seed_demo.py before the '08 - Demo Scenarios' and '09 - Security Tests' folders -- they assume the India/Emirates/Mexico demo data and demo users already exist.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8002"
+    },
+    {
+      "key": "clientId",
+      "value": "govt-of-india"
+    },
+    {
+      "key": "projectId",
+      "value": "indian-railway"
+    },
+    {
+      "key": "zoneId",
+      "value": "north"
+    },
+    {
+      "key": "nestedZoneId",
+      "value": "central"
+    },
+    {
+      "key": "structureId",
+      "value": "yamuna-bridge"
+    },
+    {
+      "key": "userId",
+      "value": "user:parth"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health",
+      "item": [
+        {
+          "name": "Liveness check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Basic liveness probe."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Clients",
+      "item": [
+        {
+          "name": "Create client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "description": "Creates the business record only. No OpenFGA relationships are written for clients.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{clientId}}\",\n  \"name\": \"Govt of India\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List clients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get client by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get nonexistent client (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/this-client-does-not-exist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "this-client-does-not-exist"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Projects",
+      "item": [
+        {
+          "name": "Create project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "description": "Creates the business record AND writes project:<id>#parent@client:<client_id> in OpenFGA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{projectId}}\",\n  \"client_id\": \"{{clientId}}\",\n  \"name\": \"Indian Railway\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get project by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{projectId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create project with nonexistent client (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"orphan-project\",\n  \"client_id\": \"no-such-client\",\n  \"name\": \"X\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Zones",
+      "item": [
+        {
+          "name": "Create root zone (parent = project)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
+            },
+            "description": "Zone has NO table. This writes zone:<id>#parent@project:<parent_id> in OpenFGA only.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{zoneId}}\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create sibling zone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"south\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create nested zone (parent = zone)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
+            },
+            "description": "Zone -> Zone recursion: parent_type can be 'zone', supporting arbitrary nesting depth.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"delhi\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"{{zoneId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create deeply nested zone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{nestedZoneId}}\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"delhi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get zone by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/zones/{{zoneId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones",
+                "{{zoneId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get zone children",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/zones/{{zoneId}}/children",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones",
+                "{{zoneId}}",
+                "children"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "List zones under a project",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "projects",
+                "{{projectId}}",
+                "zones"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create zone with nonexistent parent (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"orphan-zone\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"no-such-zone\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create zone that is its own parent (422 circular)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"self-loop\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"self-loop\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Re-create same zone, same parent (idempotent 200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{zoneId}}\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 - Structures",
+      "item": [
+        {
+          "name": "Create structure under a zone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures"
+              ]
+            },
+            "description": "Business row (name) lives in the app DB; parent zone is OpenFGA-only.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{structureId}}\",\n  \"name\": \"Yamuna Bridge\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"{{nestedZoneId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List structures (business data only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/structures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get structure by id (includes OpenFGA parent)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/structures/{{structureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures",
+                "{{structureId}}"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create structure with nonexistent zone (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/structures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "structures"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"orphan-structure\",\n  \"name\": \"X\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"no-such-zone\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - Authorization",
+      "item": [
+        {
+          "name": "Grant client-level viewer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/grant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "grant"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{userId}}\",\n  \"resource_type\": \"client\",\n  \"resource_id\": \"{{clientId}}\",\n  \"permission\": \"viewer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check access (should be allowed)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/check?user={{userId}}&resource_type=structure&resource_id={{structureId}}&permission=viewer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{userId}}"
+                },
+                {
+                  "key": "resource_type",
+                  "value": "structure"
+                },
+                {
+                  "key": "resource_id",
+                  "value": "{{structureId}}"
+                },
+                {
+                  "key": "permission",
+                  "value": "viewer"
+                }
+              ]
+            },
+            "description": "Client-level grant should inherit all the way down to Structure."
+          },
+          "response": []
+        },
+        {
+          "name": "Check access for ungranted user (should be denied)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/check?user=user:nobody&resource_type=client&resource_id={{clientId}}&permission=viewer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:nobody"
+                },
+                {
+                  "key": "resource_type",
+                  "value": "client"
+                },
+                {
+                  "key": "resource_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "permission",
+                  "value": "viewer"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke grant",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/grant?user={{userId}}&resource_type=client&resource_id={{clientId}}&permission=viewer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "grant"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{userId}}"
+                },
+                {
+                  "key": "resource_type",
+                  "value": "client"
+                },
+                {
+                  "key": "resource_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "permission",
+                  "value": "viewer"
+                }
+              ]
+            },
+            "description": "Idempotent: revoking a non-existent grant also returns 204."
+          },
+          "response": []
+        },
+        {
+          "name": "Grant on nonexistent resource (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/grant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "grant"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"user:x\",\n  \"resource_type\": \"zone\",\n  \"resource_id\": \"no-such-zone\",\n  \"permission\": \"viewer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 - Tree",
+      "item": [
+        {
+          "name": "Get authorized tree (client-level user)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}/tree?user={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Returns only branches user:parth can view. Re-run the 'Grant client-level viewer' request first."
+          },
+          "response": []
+        },
+        {
+          "name": "Get tree for a zone-level user (pruned)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}/tree?user=user:carlos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:carlos"
+                }
+              ]
+            },
+            "description": "Assumes the demo seed has been run (user:carlos has zone-level access to North)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get tree for zero-access user (404, anti-enumeration)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/{{clientId}}/tree?user=user:nobody",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "{{clientId}}",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:nobody"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get tree for nonexistent client (identical 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/this-client-does-not-exist/tree?user={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "this-client-does-not-exist",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Must return the exact same 404 shape as the zero-access case above -- anti-enumeration."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 - Demo Scenarios",
+      "item": [
+        {
+          "name": "India",
+          "item": [
+            {
+              "name": "Get India tree (user:parth, client-level)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/clients/govt-of-india/tree?user=user:parth",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "clients",
+                    "govt-of-india",
+                    "tree"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:parth"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "Get India tree (user:carlos, zone-level, pruned)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/clients/govt-of-india/tree?user=user:carlos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "clients",
+                    "govt-of-india",
+                    "tree"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:carlos"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "Get India tree (user:deepa, structure-only, pruned)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/clients/govt-of-india/tree?user=user:deepa",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "clients",
+                    "govt-of-india",
+                    "tree"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:deepa"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "user:alice can view Indian Railway (project)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/authorization/check?user=user:alice&resource_type=project&resource_id=indian-railway&permission=viewer",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "authorization",
+                    "check"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:alice"
+                    },
+                    {
+                      "key": "resource_type",
+                      "value": "project"
+                    },
+                    {
+                      "key": "resource_id",
+                      "value": "indian-railway"
+                    },
+                    {
+                      "key": "permission",
+                      "value": "viewer"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "user:alice can view Yamuna Bridge (inherited)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/authorization/check?user=user:alice&resource_type=structure&resource_id=yamuna-bridge&permission=viewer",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "authorization",
+                    "check"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:alice"
+                    },
+                    {
+                      "key": "resource_type",
+                      "value": "structure"
+                    },
+                    {
+                      "key": "resource_id",
+                      "value": "yamuna-bridge"
+                    },
+                    {
+                      "key": "permission",
+                      "value": "viewer"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Emirates",
+          "item": [
+            {
+              "name": "Get Emirates tree (user:etihad-admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/clients/emirates/tree?user=user:etihad-admin",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "clients",
+                    "emirates",
+                    "tree"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:etihad-admin"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "List zones under Etihad High Speed Railway",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/projects/etihad-high-speed-railway/zones",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "projects",
+                    "etihad-high-speed-railway",
+                    "zones"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Mexico",
+          "item": [
+            {
+              "name": "Get Mexico tree (user:mx-admin)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/clients/mexican-government/tree?user=user:mx-admin",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "clients",
+                    "mexican-government",
+                    "tree"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:mx-admin"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "List zones under Mexican Railway",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/projects/mexican-railway/zones",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "projects",
+                    "mexican-railway",
+                    "zones"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 - Security Tests",
+      "item": [
+        {
+          "name": "Cross-client denial: Etihad admin cannot see India",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/govt-of-india/tree?user=user:etihad-admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "govt-of-india",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:etihad-admin"
+                }
+              ]
+            },
+            "description": "Expect 404 -- Emirates admin has no grant anywhere in India's tree."
+          },
+          "response": []
+        },
+        {
+          "name": "Cross-branch denial: zone-level user cannot see sibling zone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/check?user=user:carlos&resource_type=zone&resource_id=south&permission=viewer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:carlos"
+                },
+                {
+                  "key": "resource_type",
+                  "value": "zone"
+                },
+                {
+                  "key": "resource_id",
+                  "value": "south"
+                },
+                {
+                  "key": "permission",
+                  "value": "viewer"
+                }
+              ]
+            },
+            "description": "user:carlos has zone-level access to North only. Expect allowed: false."
+          },
+          "response": []
+        },
+        {
+          "name": "No upward inheritance: structure-only user cannot see zone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/check?user=user:deepa&resource_type=zone&resource_id=central&permission=viewer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:deepa"
+                },
+                {
+                  "key": "resource_type",
+                  "value": "zone"
+                },
+                {
+                  "key": "resource_id",
+                  "value": "central"
+                },
+                {
+                  "key": "permission",
+                  "value": "viewer"
+                }
+              ]
+            },
+            "description": "user:deepa has structure-only access to Yamuna Bridge. Expect allowed: false."
+          },
+          "response": []
+        },
+        {
+          "name": "Zero-grant denial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/authorization/check?user=user:nobody&resource_type=structure&resource_id=yamuna-bridge&permission=viewer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "check"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:nobody"
+                },
+                {
+                  "key": "resource_type",
+                  "value": "structure"
+                },
+                {
+                  "key": "resource_id",
+                  "value": "yamuna-bridge"
+                },
+                {
+                  "key": "permission",
+                  "value": "viewer"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Anti-enumeration: unauthorized vs nonexistent client (compare 404s)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clients/this-client-does-not-exist/tree?user=user:nobody",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients",
+                "this-client-does-not-exist",
+                "tree"
+              ],
+              "query": [
+                {
+                  "key": "user",
+                  "value": "user:nobody"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid id shape is rejected (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"Not A Valid Slug!\",\n  \"name\": \"X\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate client id is rejected (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clients"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{clientId}}\",\n  \"name\": \"Different Name\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
