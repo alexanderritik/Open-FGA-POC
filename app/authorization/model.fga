@@ -1,0 +1,26 @@
+# Human-readable reference copy of the authorization model actually loaded
+# by scripts/bootstrap_openfga.py (built there via openfga_sdk model classes,
+# since the Python SDK has no DSL-to-JSON compiler). Keep these in sync.
+model
+  schema 1.1
+
+type user
+
+type client
+  relations
+    define viewer: [user]
+
+type project
+  relations
+    define parent: [client]
+    define viewer: [user] or viewer from parent
+
+type zone
+  relations
+    define parent: [project, zone]
+    define viewer: [user] or viewer from parent
+
+type structure
+  relations
+    define parent: [zone]
+    define viewer: [user] or viewer from parent

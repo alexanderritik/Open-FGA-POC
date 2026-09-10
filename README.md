@@ -168,4 +168,7 @@ required.
 ## Implementation status
 
 This project is being built step-by-step. See commit history / conversation
-for progress. Current step: **Step 1 — Project setup**.
+for progress. Current step: **Step 5 — OpenFGA model** (schema loaded into
+the store; `FGA_STORE_ID`/`FGA_MODEL_ID` populated in `.env` via
+`scripts/bootstrap_openfga.py`). Authorization API endpoints have not been
+built yet.
