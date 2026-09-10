@@ -6,6 +6,7 @@ from openfga_sdk.client.models.check_request import ClientCheckRequest
 from openfga_sdk.client.models.list_objects_request import ClientListObjectsRequest
 from openfga_sdk.client.models.tuple import ClientTuple
 from openfga_sdk.exceptions import ApiException
+from openfga_sdk.models.read_request_tuple_key import ReadRequestTupleKey
 
 from app.authorization.client import openfga_client_manager
 from app.authorization.exceptions import (
@@ -88,6 +89,35 @@ class AuthorizationService:
         except Exception as exc:
             self._handle_error("list_relationships", exc, user=user, relation=relation, object=object_type)
         return list(response.objects or [])
+
+    async def read_parent(self, object_type: str, object_id: str) -> str | None:
+        """Returns the `user` side (e.g. "project:indian-railway" or
+        "zone:north") of the direct `parent` tuple recorded for
+        `<object_type>:<object_id>`, or None if no such tuple exists — i.e.
+        the object has never been created via this API.
+
+        This reads OpenFGA's stored tuples directly (not a computed
+        permission), which is the correct way to answer "does this object
+        exist / what is its immediate parent" without reproducing any of
+        that hierarchy logic in SQL.
+        """
+        _validate_key_part("object_type", object_type)
+        _validate_key_part("object_id", object_id)
+        object_ref = f"{object_type}:{object_id}"
+        try:
+            response = await self._client.read(ReadRequestTupleKey(object=object_ref, relation="parent"))
+        except Exception as exc:
+            self._handle_error("read_parent", exc, object=object_ref)
+        tuples = response.tuples or []
+        if not tuples:
+            return None
+        if len(tuples) > 1:
+            logger.warning(
+                "Multiple parent tuples found for %s (expected at most 1); using the first of %d",
+                object_ref,
+                len(tuples),
+            )
+        return tuples[0].key.user
 
     @staticmethod
     def _handle_error(operation: str, exc: Exception, **context) -> None:

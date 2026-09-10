@@ -168,8 +168,11 @@ required.
 ## Implementation status
 
 This project is being built step-by-step. See commit history / conversation
-for progress. Current step: **Step 7 — Client APIs**
-(`POST/GET /clients`, `GET /clients/{client_id}`) — pure application-DB
-CRUD via a service layer, with an audit event recorded on creation. No
-OpenFGA relationships are written for clients yet; that starts in Step 8
-when Zones (an OpenFGA-only concept) are introduced.
+for progress. Current step: **Step 8 — Recursive Zone APIs**
+(`POST /zones`, `GET /zones/{zone_id}`, `GET /zones/{zone_id}/children`,
+`GET /projects/{project_id}/zones`). Zone has no table and no ORM model;
+every zone operation reads/writes OpenFGA tuples exclusively through
+`app/authorization/service.py` (including a new `read_parent` method for
+existence/ancestor-chain checks), with only a read-only existence check
+against the `projects` table (no Project CRUD API yet — out of scope for
+this step) to validate a project-parented zone.

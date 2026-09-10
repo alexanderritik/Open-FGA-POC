@@ -20,3 +20,15 @@ class ResourceNotFoundError(ServiceError):
         self.resource_type = resource_type
         self.resource_id = resource_id
         super().__init__(f"{resource_type} {resource_id!r} not found")
+
+
+class CircularReferenceError(ServiceError):
+    """Raised when creating a resource would make it its own ancestor
+    (directly or transitively) in a hierarchy."""
+
+    def __init__(self, resource_type: str, resource_id: str) -> None:
+        self.resource_type = resource_type
+        self.resource_id = resource_id
+        super().__init__(
+            f"circular {resource_type} relationship: {resource_id!r} would become its own ancestor"
+        )
