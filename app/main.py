@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.clients import router as clients_router
 from app.authorization.client import openfga_client_manager
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -34,6 +35,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+app.include_router(clients_router)
 
 
 @app.get("/health", tags=["health"], summary="Liveness check")

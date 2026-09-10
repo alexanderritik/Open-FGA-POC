@@ -168,8 +168,8 @@ required.
 ## Implementation status
 
 This project is being built step-by-step. See commit history / conversation
-for progress. Current step: **Step 6 — OpenFGA integration**
-(`app/authorization/{client,service,exceptions}.py`: a single choke point
-for all OpenFGA SDK calls, wired into the FastAPI lifespan, failing closed
-on any engine error). No authorization API endpoints have been built yet —
-that starts with client/project resources in the next step.
+for progress. Current step: **Step 7 — Client APIs**
+(`POST/GET /clients`, `GET /clients/{client_id}`) — pure application-DB
+CRUD via a service layer, with an audit event recorded on creation. No
+OpenFGA relationships are written for clients yet; that starts in Step 8
+when Zones (an OpenFGA-only concept) are introduced.
