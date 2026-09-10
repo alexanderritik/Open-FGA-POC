@@ -1,0 +1,100 @@
+name: openfga-rebac-poc
+
+services:
+  # --- Application PostgreSQL: business data only (users, clients, projects, structures, audit_events) ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: rebac-poc-app-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${APP_DB_USER:-app_user}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD:-app_password}
+      POSTGRES_DB: ${APP_DB_NAME:-app_db}
+    ports:
+      - "${APP_DB_PORT:-5432}:5432"
+    volumes:
+      - app_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER:-app_user} -d ${APP_DB_NAME:-app_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  # --- OpenFGA's internal PostgreSQL: owned entirely by OpenFGA, never touched directly by the app ---
+  openfga-postgres:
+    image: postgres:16-alpine
+    container_name: rebac-poc-openfga-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${FGA_DB_USER:-openfga_user}
+      POSTGRES_PASSWORD: ${FGA_DB_PASSWORD:-openfga_password}
+      POSTGRES_DB: ${FGA_DB_NAME:-openfga_db}
+    ports:
+      - "${FGA_DB_PORT:-5433}:5432"
+    volumes:
+      - openfga_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FGA_DB_USER:-openfga_user} -d ${FGA_DB_NAME:-openfga_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - fga-net
+
+  # --- One-shot migration job that provisions OpenFGA's schema in openfga-postgres, then exits ---
+  openfga-migrate:
+    image: openfga/openfga:v1.8
+    container_name: rebac-poc-openfga-migrate
+    command: migrate
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://${FGA_DB_USER:-openfga_user}:${FGA_DB_PASSWORD:-openfga_password}@openfga-postgres:5432/${FGA_DB_NAME:-openfga_db}?sslmode=disable
+    depends_on:
+      openfga-postgres:
+        condition: service_healthy
+    networks:
+      - fga-net
+
+  # --- OpenFGA authorization server: the sole source of truth for authorization/hierarchy data ---
+  openfga:
+    image: openfga/openfga:v1.8
+    container_name: rebac-poc-openfga
+    restart: unless-stopped
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://${FGA_DB_USER:-openfga_user}:${FGA_DB_PASSWORD:-openfga_password}@openfga-postgres:5432/${FGA_DB_NAME:-openfga_db}?sslmode=disable
+      OPENFGA_PLAYGROUND_ENABLED: "true"
+      OPENFGA_LOG_FORMAT: json
+    ports:
+      - "${FGA_API_PORT:-8080}:8080"   # HTTP API
+      - "${FGA_GRPC_PORT:-8081}:8081"  # gRPC API
+      - "${FGA_PLAYGROUND_PORT:-3000}:3000"  # Playground UI
+    depends_on:
+      openfga-postgres:
+        condition: service_healthy
+      openfga-migrate:
+        condition: service_completed_successfully
+    # NOTE: openfga/openfga is a distroless image (no shell, curl, or wget), so an
+    # exec-based Docker healthcheck cannot run inside this container. Liveness is
+    # verified externally instead: GET http://localhost:${FGA_API_PORT}/healthz
+    # returns {"status":"SERVING"} once ready. The FastAPI app (added in a later
+    # step) performs the same check with retry/backoff on startup and fails
+    # closed if OpenFGA is unreachable.
+    networks:
+      - fga-net
+      - app-net   # so the FastAPI app (added in a later step) can reach OpenFGA over this network
+
+volumes:
+  app_postgres_data:
+    name: openfga-rebac-poc_app_postgres_data
+  openfga_postgres_data:
+    name: openfga-rebac-poc_openfga_postgres_data
+
+networks:
+  app-net:
+    name: openfga-rebac-poc_app-net
+  fga-net:
+    name: openfga-rebac-poc_fga-net
