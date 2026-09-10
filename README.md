@@ -168,11 +168,12 @@ required.
 ## Implementation status
 
 This project is being built step-by-step. See commit history / conversation
-for progress. Current step: **Step 8 — Recursive Zone APIs**
-(`POST /zones`, `GET /zones/{zone_id}`, `GET /zones/{zone_id}/children`,
-`GET /projects/{project_id}/zones`). Zone has no table and no ORM model;
-every zone operation reads/writes OpenFGA tuples exclusively through
-`app/authorization/service.py` (including a new `read_parent` method for
-existence/ancestor-chain checks), with only a read-only existence check
-against the `projects` table (no Project CRUD API yet — out of scope for
-this step) to validate a project-parented zone.
+for progress. Current step: **Step 9 — Structure + Authorization APIs**
+(`POST/GET /structures`, `GET /structures/{id}`, `GET /authorization/check`,
+`POST/DELETE /authorization/grant`). Structure's business data lives in
+the app DB; its parent Zone is an OpenFGA tuple only. Authorization
+decisions are entirely OpenFGA's — the full Client → Project → recursive
+Zone → Structure inheritance path, direct grants at any level, and
+fail-closed behavior are all demonstrated end-to-end. No Project CRUD API
+exists yet, so tests write the `project#parent@client` tuple directly
+(the one thing such an endpoint would do) rather than building it now.

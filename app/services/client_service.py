@@ -41,6 +41,10 @@ def list_clients(db: Session) -> list[Client]:
     return list(db.query(Client).order_by(Client.created_at).all())
 
 
+def client_exists(db: Session, client_id: str) -> bool:
+    return db.get(Client, client_id) is not None
+
+
 def _translate_integrity_error(exc: IntegrityError, payload: ClientCreate) -> DuplicateResourceError:
     constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None) or ""
     if constraint == "uq_clients_name":

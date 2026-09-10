@@ -119,6 +119,18 @@ class AuthorizationService:
             )
         return tuples[0].key.user
 
+    async def tuple_exists(self, user: str, relation: str, object: str) -> bool:
+        """Returns whether the exact tuple (user, relation, object) is
+        currently stored — used to make write_tuple/delete_tuple callers
+        idempotent (e.g. granting or revoking the same permission twice)
+        without relying on error-message parsing."""
+        _validate_tuple_key(user, relation, object)
+        try:
+            response = await self._client.read(ReadRequestTupleKey(user=user, relation=relation, object=object))
+        except Exception as exc:
+            self._handle_error("tuple_exists", exc, user=user, relation=relation, object=object)
+        return bool(response.tuples)
+
     @staticmethod
     def _handle_error(operation: str, exc: Exception, **context) -> None:
         if isinstance(exc, (InvalidAuthorizationRequestError, AuthorizationServiceUnavailableError)):
