@@ -168,7 +168,8 @@ required.
 ## Implementation status
 
 This project is being built step-by-step. See commit history / conversation
-for progress. Current step: **Step 5 — OpenFGA model** (schema loaded into
-the store; `FGA_STORE_ID`/`FGA_MODEL_ID` populated in `.env` via
-`scripts/bootstrap_openfga.py`). Authorization API endpoints have not been
-built yet.
+for progress. Current step: **Step 6 — OpenFGA integration**
+(`app/authorization/{client,service,exceptions}.py`: a single choke point
+for all OpenFGA SDK calls, wired into the FastAPI lifespan, failing closed
+on any engine error). No authorization API endpoints have been built yet —
+that starts with client/project resources in the next step.

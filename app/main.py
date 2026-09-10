@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.authorization.client import openfga_client_manager
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 
@@ -14,9 +15,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info("Starting up (env=%s)", settings.app_env)
-    # Database engine and OpenFGA client lifecycle are wired in here in later steps.
-    yield
-    logger.info("Shutting down")
+    await openfga_client_manager.connect()
+    # The application database engine is process-wide (module-level in
+    # app/db/database.py) and needs no lifespan hook of its own.
+    try:
+        yield
+    finally:
+        await openfga_client_manager.close()
+        logger.info("Shutting down")
 
 
 app = FastAPI(
