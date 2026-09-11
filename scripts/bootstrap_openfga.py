@@ -103,7 +103,12 @@ def build_type_definitions() -> list[TypeDefinition]:
             },
             metadata=Metadata(
                 relations={
-                    "parent": RelationMetadata(directly_related_user_types=[RelationReference(type="zone")]),
+                    "parent": RelationMetadata(
+                        directly_related_user_types=[
+                            RelationReference(type="project"),
+                            RelationReference(type="zone"),
+                        ]
+                    ),
                     "viewer": RelationMetadata(directly_related_user_types=[RelationReference(type="user")]),
                 }
             ),

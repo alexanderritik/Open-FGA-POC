@@ -1,10 +1,12 @@
 """Idempotent demo data seeder.
 
-Seeds three scenarios (India, Emirates, Mexico) entirely through the
-running API — clients and projects via their CRUD endpoints, the
+Seeds four scenarios (India, Emirates, Mexico, Argentina) entirely through
+the running API — clients and projects via their CRUD endpoints, the
 recursive Zone hierarchy and Structures via their endpoints — plus a set
 of demo users at every access level (client/project/zone/structure) via
-POST /authorization/grant.
+POST /authorization/grant. Argentina has no Zone at all: its structures
+are parented directly to the project, demonstrating that Structure's
+OpenFGA parent can be either a Project or a Zone.
 
 Safe to re-run: a 409 ("already exists") from /clients, /projects, or
 /structures is treated as "already seeded" rather than a failure; zone
@@ -58,9 +60,9 @@ def seed_zone(client: httpx.Client, id_: str, parent_type: str, parent_id: str) 
     print(f"  zone        {id_:<28} {r.status_code}  (parent {parent_type}:{parent_id})")
 
 
-def seed_structure(client: httpx.Client, id_: str, name: str, parent_id: str) -> None:
-    r = _post(client, "/structures", {"id": id_, "name": name, "parent_type": "zone", "parent_id": parent_id})
-    print(f"  structure   {id_:<28} {r.status_code}  (zone:{parent_id})")
+def seed_structure(client: httpx.Client, id_: str, name: str, parent_id: str, parent_type: str = "zone") -> None:
+    r = _post(client, "/structures", {"id": id_, "name": name, "parent_type": parent_type, "parent_id": parent_id})
+    print(f"  structure   {id_:<28} {r.status_code}  ({parent_type}:{parent_id})")
 
 
 def seed_grant(client: httpx.Client, user: str, resource_type: str, resource_id: str) -> None:
@@ -108,8 +110,22 @@ def seed_mexico(client: httpx.Client) -> None:
     seed_structure(client, "structure-2", "Structure 2", "queretaro")
 
 
+def seed_argentina(client: httpx.Client) -> None:
+    print("\n=== Scenario 4: Argentina (direct Project -> Structure, no Zone) ===")
+    seed_client(client, "argentina", "Argentina")
+    seed_project(client, "barcelona-railway", "argentina", "Barcelona Railway")
+    # No Zone anywhere in this scenario: both structures are parented
+    # directly to the project (parent_type="project"), demonstrating the
+    # Client -> Project -> Structure shape alongside the Client -> Project
+    # -> Zone -> ... -> Structure shape used by India/Emirates/Mexico.
+    # Ids are prefixed "argentina-" because structure ids are global (not
+    # namespaced per client) and Mexico already uses "structure-1"/"structure-2".
+    seed_structure(client, "argentina-structure-1", "Structure 1", "barcelona-railway", parent_type="project")
+    seed_structure(client, "argentina-structure-2", "Structure 2", "barcelona-railway", parent_type="project")
+
+
 # (user, resource_type, resource_id, description) — one demo user per
-# access level, spanning all three scenarios. user:nobody is intentionally
+# access level, spanning all four scenarios. user:nobody is intentionally
 # absent: it has zero grants, used in Postman/tests to demonstrate denial.
 DEMO_USERS = [
     ("user:parth", "client", "govt-of-india", "client-level access to all of India"),
@@ -118,6 +134,12 @@ DEMO_USERS = [
     ("user:deepa", "structure", "yamuna-bridge", "structure-only access to Yamuna Bridge"),
     ("user:etihad-admin", "client", "emirates", "client-level access to Emirates"),
     ("user:mx-admin", "client", "mexican-government", "client-level access to Mexican Government"),
+    (
+        "user:argentina-admin",
+        "project",
+        "barcelona-railway",
+        "project-level access to Barcelona Railway (direct Project -> Structure inheritance, no Zone)",
+    ),
 ]
 
 
@@ -137,6 +159,7 @@ def main() -> None:
         seed_india(client)
         seed_emirates(client)
         seed_mexico(client)
+        seed_argentina(client)
         seed_demo_users(client)
 
     print("\nDemo data seeded successfully (idempotent -- safe to re-run).")

@@ -5,16 +5,17 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import SLUG_PATTERN
 
-# Structure's OpenFGA `parent` relation accepts only [zone] (see
-# app/authorization/model.fga) — unlike Zone, Structure cannot be parented
-# directly to a project or client.
-ParentType = Literal["zone"]
+# Structure's OpenFGA `parent` relation accepts [project, zone] (see
+# app/authorization/model.fga) — a structure can sit directly under a
+# Project (no Zone in between) or under a Zone at any nesting depth.
+# Unlike Zone, Structure still cannot be parented directly to a Client.
+ParentType = Literal["project", "zone"]
 
 
 class StructureCreate(BaseModel):
     id: str = Field(pattern=SLUG_PATTERN, max_length=255, examples=["yamuna-bridge"])
     name: str = Field(min_length=1, max_length=255, examples=["Yamuna Bridge"])
-    parent_type: ParentType = "zone"
+    parent_type: ParentType
     parent_id: str = Field(pattern=SLUG_PATTERN, max_length=255, examples=["central"])
 
 

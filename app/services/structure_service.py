@@ -1,10 +1,11 @@
 """Business logic for Structures.
 
 Structure's business data (name, created_at) lives in the application DB
-(app/db/models/structure.py has no zone_id column). Its parent Zone is
-recorded exclusively as an OpenFGA tuple
-(`structure:<id>#parent@zone:<zone_id>`), written through
-AuthorizationService — never as SQL.
+(app/db/models/structure.py has no zone_id/project_id column). Its parent
+— either a Project directly, or a Zone at any nesting depth — is recorded
+exclusively as an OpenFGA tuple (`structure:<id>#parent@project:<id>` or
+`structure:<id>#parent@zone:<id>`), written through AuthorizationService —
+never as SQL.
 """
 
 import logging
@@ -17,19 +18,29 @@ from app.authorization.service import AuthorizationService
 from app.db.models.audit_event import AuditEvent
 from app.db.models.structure import Structure
 from app.schemas.structure import StructureCreate, StructureRead
-from app.services import audit_service
+from app.services import audit_service, project_service
 from app.services.exceptions import DuplicateResourceError, ResourceNotFoundError
 
 logger = logging.getLogger(__name__)
 
+PROJECT_TYPE = "project"
 ZONE_TYPE = "zone"
 STRUCTURE_TYPE = "structure"
 PARENT_RELATION = "parent"
 
 
+async def _assert_parent_exists(db: Session, auth: AuthorizationService, parent_type: str, parent_id: str) -> None:
+    if parent_type == PROJECT_TYPE:
+        if not project_service.project_exists(db, parent_id):
+            raise ResourceNotFoundError("project", parent_id)
+        return
+
+    if await auth.read_parent(ZONE_TYPE, parent_id) is None:
+        raise ResourceNotFoundError("zone", parent_id)
+
+
 async def create_structure(db: Session, auth: AuthorizationService, payload: StructureCreate) -> StructureRead:
-    if await auth.read_parent(ZONE_TYPE, payload.parent_id) is None:
-        raise ResourceNotFoundError("zone", payload.parent_id)
+    await _assert_parent_exists(db, auth, payload.parent_type, payload.parent_id)
 
     structure = Structure(id=payload.id, name=payload.name)
     db.add(structure)
@@ -40,7 +51,7 @@ async def create_structure(db: Session, auth: AuthorizationService, payload: Str
         resource_id=payload.id,
         action="create",
         result="success",
-        event_metadata={"name": payload.name, "parent_type": "zone", "parent_id": payload.parent_id},
+        event_metadata={"name": payload.name, "parent_type": payload.parent_type, "parent_id": payload.parent_id},
     )
 
     try:
@@ -53,7 +64,7 @@ async def create_structure(db: Session, auth: AuthorizationService, payload: Str
 
     try:
         await auth.write_tuple(
-            user=f"{ZONE_TYPE}:{payload.parent_id}",
+            user=f"{payload.parent_type}:{payload.parent_id}",
             relation=PARENT_RELATION,
             object=f"{STRUCTURE_TYPE}:{payload.id}",
         )
@@ -73,7 +84,7 @@ async def create_structure(db: Session, auth: AuthorizationService, payload: Str
         id=structure.id,
         name=structure.name,
         created_at=structure.created_at,
-        parent_type="zone",
+        parent_type=payload.parent_type,
         parent_id=payload.parent_id,
     )
 

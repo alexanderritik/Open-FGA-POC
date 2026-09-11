@@ -79,22 +79,36 @@ responses for a zone never include a `name` field (see
 
 ### Hierarchy
 
+A Structure's OpenFGA parent can be **either a Project directly, or a
+Zone** at any nesting depth — both shapes coexist in the same system, and
+a single Project can mix both:
+
 ```
-Client -> Project -> Zone -> Zone -> ... -> Zone -> Structure
+Client -> Project -> Zone -> Zone -> ... -> Zone -> Structure   (e.g. India/Emirates/Mexico)
+Client -> Project -> Structure                                  (e.g. Argentina -- no Zone at all)
+
+Client -> Project -+-> Structure                                (mixed: a project can have
+                    +-> Zone -> Structure                         both direct structures and
+                    +-> Zone -> Zone -> Structure                 zoned branches at once)
 ```
 
-- **Client** and **Project** and **Structure** have both a business row
+- **Client**, **Project**, and **Structure** each have both a business row
   (application DB) and an OpenFGA object with a `parent` tuple establishing
-  where they sit in the hierarchy.
-- **Zone** has only the OpenFGA object/tuples — no business row.
+  where they sit in the hierarchy. A Structure's `parent_type` is either
+  `"project"` or `"zone"` (see [API reference](#api-reference)).
+- **Zone** has only the OpenFGA object/tuples — no business row, no table,
+  no model, regardless of what its own children are (nested Zones,
+  Structures, or both).
 - Access is inherited **downward only**: viewing a Client grants viewing of
-  every Project/Zone/Structure beneath it; viewing a Zone grants viewing of
-  every nested child Zone and Structure beneath it.
-- Viewing a Structure grants **no** access upward (not to its Zone, Project,
-  or Client).
-- Access to one Zone branch never grants access to a sibling branch, and
-  access within one Client's tree never grants access to another Client's
-  tree.
+  every Project/Zone/Structure beneath it; viewing a Project grants viewing
+  of every Structure and Zone directly beneath it (and everything nested
+  further inside those Zones); viewing a Zone grants viewing of every
+  nested child Zone and Structure beneath it.
+- Viewing a Structure grants **no** access upward, regardless of whether
+  its parent is a Project or a Zone.
+- Access to one branch (a Zone, or a Structure hanging directly off a
+  Project) never grants access to a sibling branch, and access within one
+  Client's tree never grants access to another Client's tree.
 
 ## Authentication is out of scope
 
@@ -254,14 +268,24 @@ type zone
 
 type structure
   relations
-    define parent: [zone]
+    define parent: [project, zone]
     define viewer: [user] or viewer from parent
 ```
 
 `zone#parent` accepting both `project` and `zone` is what gives Zones
-arbitrary-depth recursion. Every type's `viewer` is `[user] or viewer from
-parent` — downward-only inheritance, with no path back upward anywhere in
-the model.
+arbitrary-depth recursion. `structure#parent` likewise accepting both
+`project` and `zone` is what lets a Structure sit either directly under a
+Project or under a Zone at any depth — both shapes coexist (see
+[Hierarchy](#hierarchy)); a Structure still cannot be parented directly to
+a Client. Every type's `viewer` is `[user] or viewer from parent` —
+downward-only inheritance, with no path back upward anywhere in the model.
+
+This model has gone through two versions in this store: the original
+(Structure parented to `[zone]` only) and the current one (Structure
+parented to `[project, zone]`). `scripts/bootstrap_openfga.py` writes a new
+immutable model version each time it runs — existing tuples are unaffected
+by a model version change, since tuples are scoped to the store, not to a
+specific model version.
 
 ## API reference
 
@@ -282,9 +306,9 @@ supplied OpenFGA identity (e.g. `user:parth`); `resource_type` is one of
 | `GET /zones/{zone_id}` | Returns `{id, parent_type, parent_id}` from OpenFGA |
 | `GET /zones/{zone_id}/children` | Immediate child zones and structures |
 | `GET /projects/{project_id}/zones` | Immediate child zones of a project |
-| `POST /structures` | `{id, name, parent_type: "zone", parent_id}`. Business row **and** writes `structure:<id>#parent@zone:<parent_id>` |
+| `POST /structures` | `{id, name, parent_type: "project"\|"zone", parent_id}`. Business row **and** writes `structure:<id>#parent@project:<parent_id>` or `...@zone:<parent_id>` |
 | `GET /structures` | List (business data only) |
-| `GET /structures/{structure_id}` | Get, including the OpenFGA-recorded parent zone |
+| `GET /structures/{structure_id}` | Get, including the OpenFGA-recorded parent (project or zone) |
 | `GET /authorization/check` | `?user&resource_type&resource_id&permission=viewer` → `{allowed: bool}`. Delegates entirely to OpenFGA; fails closed |
 | `POST /authorization/grant` | `{user, resource_type, resource_id, permission}`. Idempotent (`200` if already granted, `201` if new) |
 | `DELETE /authorization/grant` | Same fields as query params. Idempotent (`204` even if nothing was granted) |
@@ -322,6 +346,27 @@ still needs the client/project nodes to attach to).
 Zone nodes always have `"name": null` — Zone has no business data anywhere
 in this system (see [Architecture](#architecture)).
 
+A Structure can also appear as a direct child of a `project` node (no Zone
+in between) — e.g. the Argentina demo scenario:
+
+```json
+{
+  "type": "client", "id": "argentina", "name": "Argentina",
+  "children": [
+    { "type": "project", "id": "barcelona-railway", "name": "Barcelona Railway",
+      "children": [
+        { "type": "structure", "id": "argentina-structure-1", "name": "Structure 1", "children": [] },
+        { "type": "structure", "id": "argentina-structure-2", "name": "Structure 2", "children": [] }
+      ]}
+  ]
+}
+```
+
+No zone is inserted to hold these structures — the tree reflects exactly
+the OpenFGA relationships that exist, nothing synthesized. A single
+project can also mix both shapes (some structures direct, others under a
+zone) — see `tests/integration/test_structure_project_parent.py::test_mixed_project_with_both_direct_structure_and_zone_branch`.
+
 A client that doesn't exist and a client the user has zero visibility into
 both return an identical `404` (see [Security model](#security-model)).
 
@@ -334,7 +379,8 @@ SEED_BASE_URL=http://127.0.0.1:8002 python scripts/seed_demo.py
 ```
 
 Requires the Docker stack and the FastAPI app to already be running.
-Seeds three scenarios through the real API (Client → Project → Zone →
+Seeds four scenarios through the real API (Client → Project → Zone →
+Structure, and — for Argentina — the more direct Client → Project →
 Structure), plus a set of demo users spanning every access level:
 
 ```
@@ -351,6 +397,11 @@ Client: Govt of India                       Client: Emirates
     │   └── Structure: South Bridge                 │   └── Structure: Structure 1
     └── Zone: Western                               └── Zone: Queretaro
         └── Structure: Western Bridge                   └── Structure: Structure 2
+
+Client: Argentina
+└── Project: Barcelona Railway
+    ├── Structure: Structure 1   (id: argentina-structure-1 -- direct
+    └── Structure: Structure 2    project parent, no Zone at all)
 ```
 
 | Demo user | Access level | Grant |
@@ -360,6 +411,7 @@ Client: Govt of India                       Client: Emirates
 | `user:carlos` | Zone | `zone:north` (reaches Delhi, Central beneath it) |
 | `user:deepa` | Structure | `structure:yamuna-bridge` only |
 | `user:etihad-admin` | Client | `client:emirates` |
+| `user:argentina-admin` | Project | `project:barcelona-railway` (reaches both direct structures — no Zone involved) |
 | `user:mx-admin` | Client | `client:mexican-government` |
 | `user:nobody` | — | No grants anywhere — demonstrates zero-access denial |
 
@@ -388,6 +440,12 @@ surface added in each build step), plus:
   access, cross-client and cross-branch denial, no-upward inheritance,
   zero-grant denial, fail-closed, anti-enumeration, tree pruning, and
   audit-trail coverage.
+- `tests/integration/test_structure_project_parent.py` — the direct
+  Project → Structure shape (no Zone): creation, 404 on a nonexistent
+  project, project-level grants reaching direct structures, structure-only
+  grants *not* reaching the project, cross-project isolation, tree
+  rendering with no fake zone inserted, and a project mixing both a direct
+  structure and a zoned branch at once.
 
 Every integration test cleans up its own rows (application DB) and tuples
 (OpenFGA) in a fixture teardown; tests use randomly-suffixed ids so they
@@ -410,10 +468,15 @@ Import `postman/OpenFGA-ReBAC-New-Architecture.postman_collection.json`.
 Default `baseUrl` is `http://127.0.0.1:8002`. No authentication headers.
 
 Folders: `01 Health`, `02 Clients`, `03 Projects`, `04 Zones`,
-`05 Structures`, `06 Authorization`, `07 Tree`, `08 Demo Scenarios`,
-`09 Security Tests`. The last two assume `scripts/seed_demo.py` has already
-been run. Collection variables: `baseUrl`, `clientId`, `projectId`,
-`zoneId`, `nestedZoneId`, `structureId`, `userId`.
+`05 Structures`, `06 Authorization`, `07 Tree`, `08 Demo Scenarios`
+(India / Emirates / Mexico / Argentina), `09 Security Tests`. The last two
+assume `scripts/seed_demo.py` has already been run. The Argentina
+sub-folder is a 9-request walkthrough of the direct Project → Structure
+shape (no Zone): create client → create project → create both structures
+directly under the project → grant project-level viewer → check both
+structures → get the client tree → confirm no cross-client leakage.
+Collection variables: `baseUrl`, `clientId`, `projectId`, `zoneId`,
+`nestedZoneId`, `structureId`, `userId`.
 
 Regenerate with `python scripts/_build_postman.py` if the collection needs
 updating (it's a plain generator script, not part of the running app).

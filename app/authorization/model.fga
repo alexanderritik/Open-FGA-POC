@@ -22,5 +22,5 @@ type zone
 
 type structure
   relations
-    define parent: [zone]
+    define parent: [project, zone]
     define viewer: [user] or viewer from parent

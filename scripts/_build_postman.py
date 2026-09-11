@@ -39,12 +39,16 @@ collection = {
             "(users, clients, projects, structures, audit_events). OpenFGA holds "
             "all authorization relationships and the entire Zone hierarchy -- "
             "Zone has no table and no ORM model anywhere in this project.\n\n"
+            "A Structure's OpenFGA parent can be either a Project directly "
+            "(Client -> Project -> Structure, e.g. Argentina) or a Zone at any "
+            "nesting depth (Client -> Project -> Zone -> ... -> Structure, e.g. "
+            "India/Emirates/Mexico) -- both coexist in the same system.\n\n"
             "No authentication: user identity is supplied directly as a string "
             "(e.g. user:parth) to authorization-aware endpoints. There are no "
             "auth headers in this collection.\n\n"
             "Run scripts/seed_demo.py before the '08 - Demo Scenarios' and "
             "'09 - Security Tests' folders -- they assume the India/Emirates/"
-            "Mexico demo data and demo users already exist."
+            "Mexico/Argentina demo data and demo users already exist."
         ),
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     },
@@ -349,6 +353,99 @@ collection["item"].append(
                         query={"user": "user:mx-admin"},
                     ),
                     item("List zones under Mexican Railway", "GET", "/projects/mexican-railway/zones"),
+                ],
+            ),
+            folder(
+                "Argentina (direct Project -> Structure, no Zone)",
+                [
+                    item(
+                        "1. Create Argentina client",
+                        "POST",
+                        "/clients",
+                        body={"id": "argentina", "name": "Argentina"},
+                    ),
+                    item(
+                        "2. Create Barcelona Railway project",
+                        "POST",
+                        "/projects",
+                        body={"id": "barcelona-railway", "client_id": "argentina", "name": "Barcelona Railway"},
+                    ),
+                    item(
+                        "3. Create Structure 1 directly under project",
+                        "POST",
+                        "/structures",
+                        body={
+                            "id": "argentina-structure-1",
+                            "name": "Structure 1",
+                            "parent_type": "project",
+                            "parent_id": "barcelona-railway",
+                        },
+                        description="parent_type='project' -- no Zone in between. Structure ids are prefixed "
+                        "'argentina-' because they are global, and Mexico already uses structure-1/structure-2.",
+                    ),
+                    item(
+                        "4. Create Structure 2 directly under project",
+                        "POST",
+                        "/structures",
+                        body={
+                            "id": "argentina-structure-2",
+                            "name": "Structure 2",
+                            "parent_type": "project",
+                            "parent_id": "barcelona-railway",
+                        },
+                    ),
+                    item(
+                        "5. Grant project viewer to user:argentina-admin",
+                        "POST",
+                        "/authorization/grant",
+                        body={
+                            "user": "user:argentina-admin",
+                            "resource_type": "project",
+                            "resource_id": "barcelona-railway",
+                            "permission": "viewer",
+                        },
+                    ),
+                    item(
+                        "6. Check Structure 1 (should be allowed -- direct Project -> Structure inheritance)",
+                        "GET",
+                        "/authorization/check",
+                        query={
+                            "user": "user:argentina-admin",
+                            "resource_type": "structure",
+                            "resource_id": "argentina-structure-1",
+                            "permission": "viewer",
+                        },
+                    ),
+                    item(
+                        "7. Check Structure 2 (should be allowed)",
+                        "GET",
+                        "/authorization/check",
+                        query={
+                            "user": "user:argentina-admin",
+                            "resource_type": "structure",
+                            "resource_id": "argentina-structure-2",
+                            "permission": "viewer",
+                        },
+                    ),
+                    item(
+                        "8. Get Argentina client tree (no fake Zone, structures directly under the project)",
+                        "GET",
+                        "/clients/argentina/tree",
+                        query={"user": "user:argentina-admin"},
+                    ),
+                    item(
+                        "9. Unauthorized access to an unrelated structure (should be denied)",
+                        "GET",
+                        "/authorization/check",
+                        query={
+                            "user": "user:argentina-admin",
+                            "resource_type": "structure",
+                            "resource_id": "yamuna-bridge",
+                            "permission": "viewer",
+                        },
+                        description="user:argentina-admin has access only within Argentina/Barcelona Railway. "
+                        "Expect allowed: false for India's Yamuna Bridge -- no cross-client leakage.",
+                    ),
                 ],
             ),
         ],

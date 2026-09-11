@@ -71,9 +71,18 @@ async def _build_project_node(db: Session, auth: AuthorizationService, project: 
     project_visible = await auth.check(user, VIEWER_RELATION, f"project:{project.id}")
 
     zone_refs = await auth.list_relationships(f"project:{project.id}", PARENT_RELATION, "zone")
+    # A Structure can be parented directly to a Project (no Zone in
+    # between) as well as to a Zone — both are direct OpenFGA children of
+    # the project, so both must be fetched here.
+    direct_structure_refs = await auth.list_relationships(f"project:{project.id}", PARENT_RELATION, "structure")
+
     children: list[TreeNode] = []
     for ref in sorted(zone_refs):
         node = await _build_zone_node(db, auth, ref.split(":", 1)[1], user)
+        if node is not None:
+            children.append(node)
+    for ref in sorted(direct_structure_refs):
+        node = await _build_structure_node(db, auth, ref.split(":", 1)[1], user)
         if node is not None:
             children.append(node)
 

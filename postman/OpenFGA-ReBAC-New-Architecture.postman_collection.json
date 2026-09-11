@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "7652b0f2-4211-4ffc-8930-babb53cd89e5",
+    "_postman_id": "617fbebb-90b8-423d-b0e2-89576ae784aa",
     "name": "OpenFGA ReBAC New Architecture",
-    "description": "OpenFGA ReBAC Authorization PoC.\n\nArchitecture: Application PostgreSQL holds business data only (users, clients, projects, structures, audit_events). OpenFGA holds all authorization relationships and the entire Zone hierarchy -- Zone has no table and no ORM model anywhere in this project.\n\nNo authentication: user identity is supplied directly as a string (e.g. user:parth) to authorization-aware endpoints. There are no auth headers in this collection.\n\nRun scripts/seed_demo.py before the '08 - Demo Scenarios' and '09 - Security Tests' folders -- they assume the India/Emirates/Mexico demo data and demo users already exist.",
+    "description": "OpenFGA ReBAC Authorization PoC.\n\nArchitecture: Application PostgreSQL holds business data only (users, clients, projects, structures, audit_events). OpenFGA holds all authorization relationships and the entire Zone hierarchy -- Zone has no table and no ORM model anywhere in this project.\n\nA Structure's OpenFGA parent can be either a Project directly (Client -> Project -> Structure, e.g. Argentina) or a Zone at any nesting depth (Client -> Project -> Zone -> ... -> Structure, e.g. India/Emirates/Mexico) -- both coexist in the same system.\n\nNo authentication: user identity is supplied directly as a string (e.g. user:parth) to authorization-aware endpoints. There are no auth headers in this collection.\n\nRun scripts/seed_demo.py before the '08 - Demo Scenarios' and '09 - Security Tests' folders -- they assume the India/Emirates/Mexico/Argentina demo data and demo users already exist.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1200,6 +1200,309 @@
                   ]
                 },
                 "description": ""
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Argentina (direct Project -> Structure, no Zone)",
+          "item": [
+            {
+              "name": "1. Create Argentina client",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/clients",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "clients"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"argentina\",\n  \"name\": \"Argentina\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "2. Create Barcelona Railway project",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/projects",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "projects"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"barcelona-railway\",\n  \"client_id\": \"argentina\",\n  \"name\": \"Barcelona Railway\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "3. Create Structure 1 directly under project",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/structures",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "structures"
+                  ]
+                },
+                "description": "parent_type='project' -- no Zone in between. Structure ids are prefixed 'argentina-' because they are global, and Mexico already uses structure-1/structure-2.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"argentina-structure-1\",\n  \"name\": \"Structure 1\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"barcelona-railway\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "4. Create Structure 2 directly under project",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/structures",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "structures"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"argentina-structure-2\",\n  \"name\": \"Structure 2\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"barcelona-railway\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "5. Grant project viewer to user:argentina-admin",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/authorization/grant",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "authorization",
+                    "grant"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user\": \"user:argentina-admin\",\n  \"resource_type\": \"project\",\n  \"resource_id\": \"barcelona-railway\",\n  \"permission\": \"viewer\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "6. Check Structure 1 (should be allowed -- direct Project -> Structure inheritance)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/authorization/check?user=user:argentina-admin&resource_type=structure&resource_id=argentina-structure-1&permission=viewer",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "authorization",
+                    "check"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:argentina-admin"
+                    },
+                    {
+                      "key": "resource_type",
+                      "value": "structure"
+                    },
+                    {
+                      "key": "resource_id",
+                      "value": "argentina-structure-1"
+                    },
+                    {
+                      "key": "permission",
+                      "value": "viewer"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "7. Check Structure 2 (should be allowed)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/authorization/check?user=user:argentina-admin&resource_type=structure&resource_id=argentina-structure-2&permission=viewer",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "authorization",
+                    "check"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:argentina-admin"
+                    },
+                    {
+                      "key": "resource_type",
+                      "value": "structure"
+                    },
+                    {
+                      "key": "resource_id",
+                      "value": "argentina-structure-2"
+                    },
+                    {
+                      "key": "permission",
+                      "value": "viewer"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "8. Get Argentina client tree (no fake Zone, structures directly under the project)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/clients/argentina/tree?user=user:argentina-admin",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "clients",
+                    "argentina",
+                    "tree"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:argentina-admin"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "9. Unauthorized access to an unrelated structure (should be denied)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/authorization/check?user=user:argentina-admin&resource_type=structure&resource_id=yamuna-bridge&permission=viewer",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "authorization",
+                    "check"
+                  ],
+                  "query": [
+                    {
+                      "key": "user",
+                      "value": "user:argentina-admin"
+                    },
+                    {
+                      "key": "resource_type",
+                      "value": "structure"
+                    },
+                    {
+                      "key": "resource_id",
+                      "value": "yamuna-bridge"
+                    },
+                    {
+                      "key": "permission",
+                      "value": "viewer"
+                    }
+                  ]
+                },
+                "description": "user:argentina-admin has access only within Argentina/Barcelona Railway. Expect allowed: false for India's Yamuna Bridge -- no cross-client leakage."
               },
               "response": []
             }
