@@ -57,11 +57,11 @@ zones), and `structure` all exist there as relationship tuples. There is
 authorization decision is answered by calling OpenFGA, never by querying
 Postgres.
 
-### Zone is not a database entity
+### Zone's hierarchy is not stored relationally
 
-`Zone` has **no table** in the application database and **no SQLAlchemy
-model**. A Zone exists only as an OpenFGA object connected via relationship
-tuples, e.g.:
+A Zone's hierarchy — existence, parent, cycle detection — is never read
+from or written to SQL. It exists only as an OpenFGA object connected via
+relationship tuples, e.g.:
 
 ```
 zone:north#parent@project:indian-railway
@@ -72,10 +72,15 @@ structure:yamuna-bridge#parent@zone:central
 
 This lets Zones nest recursively (Zone → Zone → Zone → ...) to arbitrary
 depth without any schema changes, and keeps OpenFGA as the single source of
-truth for the authorization hierarchy. Because Zone has no business data,
-a zone node's only identity anywhere in this system is its `id` — API
-responses for a zone never include a `name` field (see
-[Tree](#get-clientsclient_idtree)).
+truth for the authorization hierarchy.
+
+Zone does have a `zones` table (`app/db/models/zone.py`), but it is a
+**metadata mirror only**: `id`, `name`, and a copy of the parent reference,
+written alongside the OpenFGA tuple at creation time. It has no foreign
+key tying `parent_id` to `projects`/`zones` — that shape is enforced
+exclusively through OpenFGA — and it is never consulted for existence,
+cycle checks, or authorization. A zone's `name` is optional and defaults
+to `null` for zones created before this table existed.
 
 ### Hierarchy
 
@@ -96,9 +101,10 @@ Client -> Project -+-> Structure                                (mixed: a projec
   (application DB) and an OpenFGA object with a `parent` tuple establishing
   where they sit in the hierarchy. A Structure's `parent_type` is either
   `"project"` or `"zone"` (see [API reference](#api-reference)).
-- **Zone** has only the OpenFGA object/tuples — no business row, no table,
-  no model, regardless of what its own children are (nested Zones,
-  Structures, or both).
+- **Zone**'s hierarchy lives only in the OpenFGA object/tuples, regardless
+  of what its own children are (nested Zones, Structures, or both); its
+  `zones` table row is a name/metadata mirror only, never consulted for
+  hierarchy or authorization.
 - Access is inherited **downward only**: viewing a Client grants viewing of
   every Project/Zone/Structure beneath it; viewing a Project grants viewing
   of every Structure and Zone directly beneath it (and everything nested
@@ -132,7 +138,7 @@ app/
 │   └── logging.py                structured stdout logging
 ├── db/
 │   ├── database.py               SQLAlchemy engine/session, Base, get_db dependency
-│   ├── models/                   ORM models: User, Client, Project, Structure, AuditEvent (NO Zone model)
+│   ├── models/                   ORM models: User, Client, Project, Structure, Zone (metadata mirror only), AuditEvent
 │   └── migrations/                Alembic migrations
 ├── authorization/
 │   ├── client.py                  OpenFgaClientManager: process-wide async OpenFGA SDK client lifecycle
@@ -302,8 +308,8 @@ supplied OpenFGA identity (e.g. `user:parth`); `resource_type` is one of
 | `POST /projects` | `{id, client_id, name}`. Business row **and** writes `project:<id>#parent@client:<client_id>` |
 | `GET /projects` | List |
 | `GET /projects/{project_id}` | Get |
-| `POST /zones` | `{id, parent_type: "project"\|"zone", parent_id}`. **OpenFGA only** — no table, idempotent for an unchanged id+parent |
-| `GET /zones/{zone_id}` | Returns `{id, parent_type, parent_id}` from OpenFGA |
+| `POST /zones` | `{id, name?, parent_type: "project"\|"zone", parent_id}`. Hierarchy is written to **OpenFGA only**; `name` is mirrored to the `zones` table. Idempotent for an unchanged id+parent |
+| `GET /zones/{zone_id}` | Returns `{id, name, parent_type, parent_id}` — `parent_type`/`parent_id` from OpenFGA, `name` from the mirror table |
 | `GET /zones/{zone_id}/children` | Immediate child zones and structures |
 | `GET /projects/{project_id}/zones` | Immediate child zones of a project |
 | `POST /structures` | `{id, name, parent_type: "project"\|"zone", parent_id}`. Business row **and** writes `structure:<id>#parent@project:<parent_id>` or `...@zone:<parent_id>` |
@@ -602,7 +608,11 @@ Documented here rather than implemented, consistent with this being a PoC:
   `project_service.py`) rather than leaving an orphan — but this is
   best-effort, not a two-phase commit, and a crash between those two steps
   (as opposed to a clean exception) could still leave one without the
-  other.
+  other. Zone creation writes in the opposite order (OpenFGA tuple first,
+  since it alone is authoritative for the hierarchy), so the equivalent
+  gap there is a zone whose OpenFGA tuple exists but whose `zones` mirror
+  row failed to persist — the zone is still fully functional, just
+  reporting `name: null` until reconciled.
 - **No user-scoped visibility check on plain resource reads.** `GET
   /clients/{id}`, `/projects/{id}`, `/structures/{id}`, and the `list`
   endpoints do not take a `user` parameter and are not access-controlled
@@ -623,3 +633,4 @@ Documented here rather than implemented, consistent with this being a PoC:
 
 This project has been built step-by-step; a full architecture/security
 review is recommended as the next activity before adding further features.
+# Open-FGA-POC
