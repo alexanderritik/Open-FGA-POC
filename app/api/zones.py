@@ -53,10 +53,11 @@ async def create_zone(
 )
 async def get_zone(
     zone_id: str,
+    db: Session = Depends(get_db),
     auth: AuthorizationService = Depends(get_authorization_service),
 ) -> ZoneRead:
     try:
-        return await zone_service.get_zone(auth, zone_id)
+        return await zone_service.get_zone(db, auth, zone_id)
     except ResourceNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except AuthorizationServiceUnavailableError as exc:

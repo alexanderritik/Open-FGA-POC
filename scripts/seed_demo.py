@@ -80,13 +80,10 @@ def seed_india(client: httpx.Client) -> None:
     seed_zone(client, "south", "project", "indian-railway")
     seed_zone(client, "western", "project", "indian-railway")
     seed_zone(client, "delhi", "zone", "north")
-    seed_zone(client, "central", "zone", "delhi")
-    seed_structure(client, "yamuna-bridge", "Yamuna Bridge", "central")
-    seed_structure(client, "agra-bridge", "Agra Bridge", "central")
-    seed_structure(client, "delhi-bridge", "Delhi Bridge", "delhi")
-    seed_structure(client, "north-bridge", "North Bridge", "north")
-    seed_structure(client, "south-bridge", "South Bridge", "south")
-    seed_structure(client, "western-bridge", "Western Bridge", "western")
+    seed_structure(client, "yamuna-bridge", "Yamuna Bridge", "delhi")
+    seed_structure(client, "agra-bridge", "Agra Bridge", "delhi")
+    seed_structure(client, "kerala-bridge", "Kerala Bridge", "south")
+    seed_structure(client, "goa-bridge", "Goa Bridge", "western")
 
 
 def seed_emirates(client: httpx.Client) -> None:
@@ -130,7 +127,7 @@ def seed_argentina(client: httpx.Client) -> None:
 DEMO_USERS = [
     ("user:parth", "client", "govt-of-india", "client-level access to all of India"),
     ("user:alice", "project", "indian-railway", "project-level access to Indian Railway"),
-    ("user:carlos", "zone", "north", "zone-level access to North (and Delhi, Central beneath it)"),
+    ("user:carlos", "zone", "north", "zone-level access to North (and Delhi beneath it)"),
     ("user:deepa", "structure", "yamuna-bridge", "structure-only access to Yamuna Bridge"),
     ("user:etihad-admin", "client", "emirates", "client-level access to Emirates"),
     ("user:mx-admin", "client", "mexican-government", "client-level access to Mexican Government"),

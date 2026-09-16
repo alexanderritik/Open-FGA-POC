@@ -30,6 +30,7 @@ from app.db.models.audit_event import AuditEvent
 from app.db.models.client import Client
 from app.db.models.project import Project
 from app.db.models.structure import Structure
+from app.db.models.zone import Zone
 from app.main import app
 
 
@@ -121,6 +122,17 @@ def scenario(api_client, fga_cleanup):
                     [ids["structure_yamuna"], ids["structure_south"], ids["structure_other"]]
                 )
             ).delete(synchronize_session=False)
+            session.query(Zone).filter(
+                Zone.id.in_(
+                    [
+                        ids["zone_north"],
+                        ids["zone_south"],
+                        ids["zone_delhi"],
+                        ids["zone_central"],
+                        ids["zone_other"],
+                    ]
+                )
+            ).delete(synchronize_session=False)
             session.query(Project).filter(Project.id.in_([ids["project_a"], ids["project_b"]])).delete(
                 synchronize_session=False
             )
@@ -152,7 +164,7 @@ def check(api_client, user, resource_type, resource_id, permission="viewer"):
 
 def flatten_ids(node):
     out = {node["id"]}
-    for child in node["children"]:
+    for child in node.get("children", []):
         out |= flatten_ids(child)
     return out
 

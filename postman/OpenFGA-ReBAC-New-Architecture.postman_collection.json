@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "617fbebb-90b8-423d-b0e2-89576ae784aa",
     "name": "OpenFGA ReBAC New Architecture",
-    "description": "OpenFGA ReBAC Authorization PoC.\n\nArchitecture: Application PostgreSQL holds business data only (users, clients, projects, structures, audit_events). OpenFGA holds all authorization relationships and the entire Zone hierarchy -- Zone has no table and no ORM model anywhere in this project.\n\nA Structure's OpenFGA parent can be either a Project directly (Client -> Project -> Structure, e.g. Argentina) or a Zone at any nesting depth (Client -> Project -> Zone -> ... -> Structure, e.g. India/Emirates/Mexico) -- both coexist in the same system.\n\nNo authentication: user identity is supplied directly as a string (e.g. user:parth) to authorization-aware endpoints. There are no auth headers in this collection.\n\nRun scripts/seed_demo.py before the '08 - Demo Scenarios' and '09 - Security Tests' folders -- they assume the India/Emirates/Mexico/Argentina demo data and demo users already exist.",
+    "description": "OpenFGA ReBAC Authorization PoC.\n\nArchitecture: Application PostgreSQL holds business data (users, clients, projects, structures, zones, audit_events). OpenFGA holds all authorization relationships and the entire Zone hierarchy -- the `zones` table is a metadata mirror only (id, name, parent_type, parent_id): OpenFGA remains the sole source of truth for zone existence, parent, and cycle detection, never the DB row.\n\nA Structure's OpenFGA parent can be either a Project directly (Client -> Project -> Structure, e.g. Argentina) or a Zone at any nesting depth (Client -> Project -> Zone -> ... -> Structure, e.g. India/Emirates/Mexico) -- both coexist in the same system.\n\nNo authentication: user identity is supplied directly as a string (e.g. user:parth) to authorization-aware endpoints. There are no auth headers in this collection.\n\nRun scripts/seed_demo.py before the '08 - Demo Scenarios' and '09 - Security Tests' folders -- they assume the India/Emirates/Mexico/Argentina demo data and demo users already exist.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -280,10 +280,10 @@
                 "zones"
               ]
             },
-            "description": "Zone has NO table. This writes zone:<id>#parent@project:<parent_id> in OpenFGA only.",
+            "description": "Hierarchy (parent) is written to OpenFGA only: zone:<id>#parent@project:<parent_id>. `name` is optional and, if given, is mirrored to the `zones` table for lookup -- it plays no part in authorization or hierarchy.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{zoneId}}\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
+              "raw": "{\n  \"id\": \"{{zoneId}}\",\n  \"name\": \"North\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -315,7 +315,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"south\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
+              "raw": "{\n  \"id\": \"south\",\n  \"name\": \"South\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -347,7 +347,7 @@
             "description": "Zone -> Zone recursion: parent_type can be 'zone', supporting arbitrary nesting depth.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"delhi\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"{{zoneId}}\"\n}",
+              "raw": "{\n  \"id\": \"delhi\",\n  \"name\": \"Delhi\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"{{zoneId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -379,7 +379,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{nestedZoneId}}\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"delhi\"\n}",
+              "raw": "{\n  \"id\": \"{{nestedZoneId}}\",\n  \"name\": \"Central\",\n  \"parent_type\": \"zone\",\n  \"parent_id\": \"delhi\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -404,7 +404,7 @@
                 "{{zoneId}}"
               ]
             },
-            "description": ""
+            "description": "Returns {id, name, parent_type, parent_id}. parent_type/parent_id come from OpenFGA; name comes from the zones metadata-mirror table and is null if the zone was created without one."
           },
           "response": []
         },
@@ -531,10 +531,10 @@
                 "zones"
               ]
             },
-            "description": "",
+            "description": "Idempotent on id+parent only: since this is a no-op retry, the mirrored name is NOT updated even though a different name is sent here -- the response still returns the original 'North'.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{zoneId}}\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
+              "raw": "{\n  \"id\": \"{{zoneId}}\",\n  \"name\": \"Renamed North (ignored)\",\n  \"parent_type\": \"project\",\n  \"parent_id\": \"{{projectId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -3,5 +3,6 @@ from app.db.models.client import Client
 from app.db.models.project import Project
 from app.db.models.structure import Structure
 from app.db.models.user import User
+from app.db.models.zone import Zone
 
-__all__ = ["AuditEvent", "Client", "Project", "Structure", "User"]
+__all__ = ["AuditEvent", "Client", "Project", "Structure", "User", "Zone"]

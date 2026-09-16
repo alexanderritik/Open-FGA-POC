@@ -1,15 +1,17 @@
 """Business logic for Zones.
 
-Zone is deliberately NOT a SQLAlchemy model and has no table: its identity,
-its parent (project or another zone), and its children exist only as
-OpenFGA tuples (`zone:<id>#parent@<project:id|zone:id>`). Every function
-here reads/writes that hierarchy exclusively through AuthorizationService
-(app/authorization/service.py) — never SQL — so OpenFGA remains the single
+Zone's hierarchy — its identity, its parent (project or another zone), and
+its children — exists only as OpenFGA tuples
+(`zone:<id>#parent@<project:id|zone:id>`), and every existence/cycle/
+parent-exists check here reads that through AuthorizationService
+(app/authorization/service.py), never SQL, so OpenFGA remains the single
 source of truth for the hierarchy shape.
 
-The only SQL touched in this module is a read-only existence check against
-the `projects` table (app/services/project_service.py), needed to validate
-a zone's parent when that parent is a project.
+The `zones` table (app/db/models/zone.py) is a metadata mirror only: it
+stores `name` (which OpenFGA tuples have no room for) plus a copy of the
+parent reference, written alongside the OpenFGA tuple at creation time.
+It is never consulted for authorization, existence, or cycle decisions —
+only to look up a zone's name.
 """
 
 import logging
@@ -17,6 +19,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.authorization.service import AuthorizationService
+from app.db.models.zone import Zone
 from app.schemas.zone import ZoneChildren, ZoneCreate, ZoneRead
 from app.services import audit_service, project_service
 from app.services.exceptions import CircularReferenceError, DuplicateResourceError, ResourceNotFoundError
@@ -85,16 +88,28 @@ async def _assert_no_cycle(auth: AuthorizationService, new_zone_id: str, parent_
     raise CircularReferenceError("zone", new_zone_id)
 
 
+def _names_by_id(db: Session, zone_ids: list[str]) -> dict[str, str | None]:
+    if not zone_ids:
+        return {}
+    rows = db.query(Zone).filter(Zone.id.in_(zone_ids)).all()
+    return {row.id: row.name for row in rows}
+
+
 async def create_zone(db: Session, auth: AuthorizationService, payload: ZoneCreate) -> tuple[ZoneRead, bool]:
     """Returns (zone, created) — created=False means the identical
     id+parent combination already existed and this call was a no-op
-    (idempotent retry) rather than a fresh write."""
+    (idempotent retry) rather than a fresh write; the mirror row's name is
+    not updated on that path since no new state was actually written."""
     requested_parent_ref = _ref(payload.parent_type, payload.parent_id)
 
     existing_parent_ref = await auth.read_parent(ZONE_TYPE, payload.id)
     if existing_parent_ref is not None:
         if existing_parent_ref == requested_parent_ref:
-            return ZoneRead(id=payload.id, parent_type=payload.parent_type, parent_id=payload.parent_id), False
+            existing_name = _names_by_id(db, [payload.id]).get(payload.id)
+            return (
+                ZoneRead(id=payload.id, name=existing_name, parent_type=payload.parent_type, parent_id=payload.parent_id),
+                False,
+            )
         raise DuplicateResourceError("zone", "id", payload.id)
 
     # Self/circular reference is checked before existence: it's a
@@ -104,8 +119,12 @@ async def create_zone(db: Session, auth: AuthorizationService, payload: ZoneCrea
     await _assert_no_cycle(auth, payload.id, payload.parent_type, payload.parent_id)
     await _assert_parent_exists(db, auth, payload.parent_type, payload.parent_id)
 
+    # OpenFGA write happens first: it is the source of truth for the
+    # hierarchy, so the mirror row below is only ever persisted once that
+    # authoritative write has actually succeeded.
     await auth.write_tuple(user=requested_parent_ref, relation=PARENT_RELATION, object=_ref(ZONE_TYPE, payload.id))
 
+    db.add(Zone(id=payload.id, name=payload.name, parent_type=payload.parent_type, parent_id=payload.parent_id))
     audit_service.record_event(
         db,
         event_type="zone.relationship.created",
@@ -113,19 +132,20 @@ async def create_zone(db: Session, auth: AuthorizationService, payload: ZoneCrea
         resource_id=payload.id,
         action="create",
         result="success",
-        event_metadata={"parent_type": payload.parent_type, "parent_id": payload.parent_id},
+        event_metadata={"name": payload.name, "parent_type": payload.parent_type, "parent_id": payload.parent_id},
     )
     db.commit()
 
-    return ZoneRead(id=payload.id, parent_type=payload.parent_type, parent_id=payload.parent_id), True
+    return ZoneRead(id=payload.id, name=payload.name, parent_type=payload.parent_type, parent_id=payload.parent_id), True
 
 
-async def get_zone(auth: AuthorizationService, zone_id: str) -> ZoneRead:
+async def get_zone(db: Session, auth: AuthorizationService, zone_id: str) -> ZoneRead:
     parent_ref = await auth.read_parent(ZONE_TYPE, zone_id)
     if parent_ref is None:
         raise ResourceNotFoundError("zone", zone_id)
     parent_type, parent_id = _parse_ref(parent_ref)
-    return ZoneRead(id=zone_id, parent_type=parent_type, parent_id=parent_id)
+    name = _names_by_id(db, [zone_id]).get(zone_id)
+    return ZoneRead(id=zone_id, name=name, parent_type=parent_type, parent_id=parent_id)
 
 
 async def list_zones_under_project(db: Session, auth: AuthorizationService, project_id: str) -> list[ZoneRead]:
@@ -133,9 +153,9 @@ async def list_zones_under_project(db: Session, auth: AuthorizationService, proj
         raise ResourceNotFoundError("project", project_id)
 
     zone_refs = await auth.list_relationships(_ref(PROJECT_TYPE, project_id), PARENT_RELATION, ZONE_TYPE)
-    return [
-        ZoneRead(id=_parse_ref(ref)[1], parent_type="project", parent_id=project_id) for ref in sorted(zone_refs)
-    ]
+    zone_ids = sorted(_parse_ref(ref)[1] for ref in zone_refs)
+    names = _names_by_id(db, zone_ids)
+    return [ZoneRead(id=zid, name=names.get(zid), parent_type="project", parent_id=project_id) for zid in zone_ids]
 
 
 async def get_zone_children(auth: AuthorizationService, zone_id: str) -> ZoneChildren:

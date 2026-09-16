@@ -15,9 +15,16 @@ def db_session():
         session.close()
 
 
-def test_no_zones_table_exists():
-    table_names = inspect(engine).get_table_names()
-    assert "zones" not in table_names
+def test_zones_table_is_a_metadata_mirror_only():
+    """`zones` exists to store `name` (and a copy of the parent reference)
+    but must never become the source of truth for hierarchy: no foreign
+    key ties `parent_id` to `projects`/`zones`, since the parent's real
+    type/target is validated exclusively through OpenFGA
+    (app/services/zone_service.py)."""
+    inspector = inspect(engine)
+    columns = {c["name"] for c in inspector.get_columns("zones")}
+    assert columns == {"id", "name", "parent_type", "parent_id", "created_at"}
+    assert inspector.get_foreign_keys("zones") == []
 
 
 def test_structures_table_has_no_zone_column():

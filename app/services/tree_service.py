@@ -27,7 +27,7 @@ from app.authorization.service import AuthorizationService
 from app.db.models.client import Client
 from app.db.models.project import Project
 from app.db.models.structure import Structure
-from app.schemas.tree import TreeNode
+from app.schemas.tree import ContainerNode, StructureNode, TreeNode
 from app.services import audit_service
 from app.services.exceptions import ResourceNotFoundError
 
@@ -35,7 +35,7 @@ VIEWER_RELATION = "viewer"
 PARENT_RELATION = "parent"
 
 
-async def _build_structure_node(db: Session, auth: AuthorizationService, structure_id: str, user: str) -> TreeNode | None:
+async def _build_structure_node(db: Session, auth: AuthorizationService, structure_id: str, user: str) -> StructureNode | None:
     if not await auth.check(user, VIEWER_RELATION, f"structure:{structure_id}"):
         return None
     structure = db.get(Structure, structure_id)
@@ -43,10 +43,10 @@ async def _build_structure_node(db: Session, auth: AuthorizationService, structu
     # the row) would be a data-consistency bug elsewhere, not something to
     # crash the tree on — render it with no name rather than fail.
     name = structure.name if structure is not None else None
-    return TreeNode(type="structure", id=structure_id, name=name, children=[])
+    return StructureNode(id=structure_id, name=name)
 
 
-async def _build_zone_node(db: Session, auth: AuthorizationService, zone_id: str, user: str) -> TreeNode | None:
+async def _build_zone_node(db: Session, auth: AuthorizationService, zone_id: str, user: str) -> ContainerNode | None:
     zone_visible = await auth.check(user, VIEWER_RELATION, f"zone:{zone_id}")
 
     child_zone_refs = await auth.list_relationships(f"zone:{zone_id}", PARENT_RELATION, "zone")
@@ -64,10 +64,10 @@ async def _build_zone_node(db: Session, auth: AuthorizationService, zone_id: str
 
     if not zone_visible and not children:
         return None
-    return TreeNode(type="zone", id=zone_id, name=None, children=children)
+    return ContainerNode(type="zone", id=zone_id, name=None, children=children)
 
 
-async def _build_project_node(db: Session, auth: AuthorizationService, project: Project, user: str) -> TreeNode | None:
+async def _build_project_node(db: Session, auth: AuthorizationService, project: Project, user: str) -> ContainerNode | None:
     project_visible = await auth.check(user, VIEWER_RELATION, f"project:{project.id}")
 
     zone_refs = await auth.list_relationships(f"project:{project.id}", PARENT_RELATION, "zone")
@@ -88,10 +88,10 @@ async def _build_project_node(db: Session, auth: AuthorizationService, project: 
 
     if not project_visible and not children:
         return None
-    return TreeNode(type="project", id=project.id, name=project.name, children=children)
+    return ContainerNode(type="project", id=project.id, name=project.name, children=children)
 
 
-async def _build_client_tree(db: Session, auth: AuthorizationService, client: Client, user: str) -> TreeNode | None:
+async def _build_client_tree(db: Session, auth: AuthorizationService, client: Client, user: str) -> ContainerNode | None:
     client_visible = await auth.check(user, VIEWER_RELATION, f"client:{client.id}")
 
     projects = db.query(Project).filter(Project.client_id == client.id).order_by(Project.created_at).all()
@@ -103,7 +103,7 @@ async def _build_client_tree(db: Session, auth: AuthorizationService, client: Cl
 
     if not client_visible and not children:
         return None
-    return TreeNode(type="client", id=client.id, name=client.name, children=children)
+    return ContainerNode(type="client", id=client.id, name=client.name, children=children)
 
 
 async def get_client_tree(db: Session, auth: AuthorizationService, client_id: str, user: str) -> TreeNode:

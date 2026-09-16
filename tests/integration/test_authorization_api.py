@@ -33,6 +33,7 @@ from app.db.models.audit_event import AuditEvent
 from app.db.models.client import Client
 from app.db.models.project import Project
 from app.db.models.structure import Structure
+from app.db.models.zone import Zone
 from app.main import app
 
 
@@ -138,6 +139,9 @@ async def hierarchy(api_client, fga_cleanup):
             synchronize_session=False
         )
         session.query(Structure).filter(Structure.id == ids["structure"]).delete(synchronize_session=False)
+        session.query(Zone).filter(
+            Zone.id.in_([ids["zone_north"], ids["zone_south"], ids["zone_delhi"], ids["zone_central"], ids["zone_other"]])
+        ).delete(synchronize_session=False)
         session.query(Project).filter(Project.id.in_([ids["project_a"], ids["project_b"]])).delete(
             synchronize_session=False
         )

@@ -1,0 +1,1211 @@
+<title>Business Hierarchy Suite</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#f3f1ec;
+    --surface:#ffffff;
+    --surface-2:#eae6dc;
+    --surface-3:#ddd8c9;
+    --ink:#1c1a1f;
+    --ink-dim:#615d68;
+    --ink-faint:#8a8590;
+    --border:#d9d3c4;
+    --accent:#5a4394;
+    --accent-soft:#ece6f9;
+    --accent-2:#2f5f86;
+    --accent-2-soft:#e2edf3;
+    --leaf:#9c6a0c;
+    --leaf-soft:#f5ecd8;
+    --good:#276b45;
+    --good-soft:#e1f1e6;
+    --bad:#a63a3a;
+    --bad-soft:#fae6e5;
+    --shadow: 0 1px 2px rgba(30,24,10,.05), 0 10px 28px -16px rgba(30,24,10,.28);
+    --font-display:'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    --font-body:'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#131217; --surface:#1c1a22; --surface-2:#242129; --surface-3:#2e2a35;
+      --ink:#ece8e2; --ink-dim:#aaa4b0; --ink-faint:#7c7684; --border:#39353f;
+      --accent:#bcaaf0; --accent-soft:#2a2440;
+      --accent-2:#8fc0e6; --accent-2-soft:#1c2e39;
+      --leaf:#e2ab5a; --leaf-soft:#372c19;
+      --good:#7fd39f; --good-soft:#173321;
+      --bad:#ec9c9c; --bad-soft:#391f1f;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 32px -16px rgba(0,0,0,.65);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#131217; --surface:#1c1a22; --surface-2:#242129; --surface-3:#2e2a35;
+    --ink:#ece8e2; --ink-dim:#aaa4b0; --ink-faint:#7c7684; --border:#39353f;
+    --accent:#bcaaf0; --accent-soft:#2a2440;
+    --accent-2:#8fc0e6; --accent-2-soft:#1c2e39;
+    --leaf:#e2ab5a; --leaf-soft:#372c19;
+    --good:#7fd39f; --good-soft:#173321;
+    --bad:#ec9c9c; --bad-soft:#391f1f;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 32px -16px rgba(0,0,0,.65);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--font-body); overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent); color:var(--surface); }
+  h1,h2,h3{ font-family:var(--font-display); margin:0; text-wrap:balance; }
+  p{ margin:0; }
+  .mono{ font-family:var(--font-mono); }
+  .tabular{ font-variant-numeric:tabular-nums; }
+
+  /* ---------- deck shell ---------- */
+  .deck{ position:relative; height:100dvh; width:100%; }
+  .slide{
+    position:absolute; inset:0; opacity:0; visibility:hidden;
+    transform:translateY(14px);
+    transition:opacity .38s ease, transform .38s ease;
+    overflow-y:auto; overflow-x:hidden;
+    padding: clamp(64px,9vh,88px) clamp(20px,5.5vw,88px) clamp(76px,9vh,96px);
+  }
+  .slide.active{ opacity:1; visibility:visible; transform:none; z-index:2; }
+  @media (prefers-reduced-motion: reduce){ .slide{ transition:none; } }
+  .slide-inner{ max-width:1180px; margin:0 auto; min-height:100%; }
+
+  .eyebrow-row{
+    position:fixed; top:0; left:0; right:0; height:44px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 clamp(20px,5.5vw,88px);
+    font-family:var(--font-mono); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-faint); z-index:5; pointer-events:none;
+  }
+  .eyebrow-row span.brand{ color:var(--ink-dim); }
+
+  .kicker{
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 .9rem; display:flex; align-items:center; gap:.5em;
+  }
+  .kicker::before{ content:""; width:18px; height:2px; background:var(--accent); display:inline-block; }
+  .slide-title{ font-size:clamp(1.7rem,1.15rem + 2.1vw,2.55rem); font-weight:700; line-height:1.08; letter-spacing:-.01em; }
+  .slide-sub{ font-size:clamp(.95rem,.87rem + .3vw,1.1rem); color:var(--ink-dim); margin-top:.7rem; max-width:62ch; line-height:1.5; }
+  .slide-head{ margin-bottom:clamp(1.6rem,4vh,2.6rem); }
+
+  /* ---------- nav ---------- */
+  .navbar{
+    position:fixed; left:0; right:0; bottom:0; height:64px; z-index:20;
+    display:flex; align-items:center; gap:14px;
+    padding:0 clamp(16px,5vw,60px);
+    background:linear-gradient(to top, var(--bg) 55%, transparent);
+  }
+  .nav-btn{
+    width:38px; height:38px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:border-color .15s, color .15s, transform .1s; flex:none;
+  }
+  .nav-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .nav-btn:active{ transform:scale(.93); }
+  .nav-btn:disabled{ opacity:.35; cursor:default; }
+  .nav-btn:disabled:hover{ border-color:var(--border); color:var(--ink); }
+  .nav-btn svg{ width:16px; height:16px; }
+  .nav-count{ font-family:var(--font-mono); font-size:.8rem; color:var(--ink-dim); white-space:nowrap; }
+  .nav-track{ flex:1; height:3px; background:var(--border); border-radius:3px; position:relative; overflow:hidden; }
+  .nav-fill{ position:absolute; inset:0 auto 0 0; width:0%; background:var(--accent); border-radius:3px; transition:width .35s ease; }
+  .nav-outline-btn{
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.05em; text-transform:uppercase;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink-dim);
+    border-radius:999px; padding:.5em 1em; cursor:pointer; white-space:nowrap;
+  }
+  .nav-outline-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  .outline-overlay{
+    position:fixed; inset:0; background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:blur(6px); z-index:30; display:flex; align-items:center; justify-content:center;
+    opacity:0; visibility:hidden; transition:opacity .2s ease;
+  }
+  .outline-overlay.open{ opacity:1; visibility:visible; }
+  .outline-panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    box-shadow:var(--shadow); width:min(560px,88vw); max-height:80vh; overflow-y:auto; padding:10px;
+  }
+  .outline-item{
+    display:flex; align-items:baseline; gap:12px; width:100%; text-align:left;
+    padding:.7em .8em; border-radius:10px; border:none; background:transparent; cursor:pointer;
+    color:var(--ink); font-family:var(--font-body); font-size:.92rem;
+  }
+  .outline-item:hover{ background:var(--surface-2); }
+  .outline-item.current{ background:var(--accent-soft); color:var(--accent); }
+  .outline-item b{ font-family:var(--font-mono); font-weight:500; color:var(--ink-faint); font-size:.78rem; width:1.6em; flex:none; }
+  .outline-item.current b{ color:var(--accent); }
+  .outline-item small{ color:var(--ink-faint); font-family:var(--font-mono); font-size:.7rem; margin-left:auto; padding-left:1em; flex:none; }
+
+  /* ---------- reusable pieces ---------- */
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .grid-4{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  @media (max-width:860px){ .grid-2,.grid-3,.grid-4{ grid-template-columns:1fr; } }
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    padding:22px 24px; box-shadow:var(--shadow);
+  }
+  .card h3{ font-size:1.05rem; font-weight:600; margin-bottom:.5em; }
+  .card ul{ margin:0; padding-left:1.1em; color:var(--ink-dim); font-size:.92rem; line-height:1.65; }
+  .card ul li{ margin-bottom:.15em; }
+  .card p{ color:var(--ink-dim); font-size:.92rem; line-height:1.6; }
+
+  .tag{
+    display:inline-flex; align-items:center; font-family:var(--font-mono); font-size:.68rem;
+    letter-spacing:.06em; text-transform:uppercase; padding:.28em .65em; border-radius:6px; font-weight:500;
+  }
+  .tag.blue{ background:var(--accent-2-soft); color:var(--accent-2); }
+  .tag.violet{ background:var(--accent-soft); color:var(--accent); }
+  .tag.amber{ background:var(--leaf-soft); color:var(--leaf); }
+  .tag.good{ background:var(--good-soft); color:var(--good); }
+  .tag.bad{ background:var(--bad-soft); color:var(--bad); }
+  .tag.neutral{ background:var(--surface-2); color:var(--ink-dim); }
+
+  .endpoint{
+    display:inline-flex; align-items:center; gap:.6em; font-family:var(--font-mono); font-size:.82rem;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:.5em .8em; color:var(--ink);
+  }
+  .endpoint .verb{ font-weight:600; color:var(--accent-2); }
+
+  .note{
+    border:1px dashed var(--border); border-radius:12px; padding:16px 20px; color:var(--ink-dim);
+    font-size:.88rem; line-height:1.55; background:var(--surface-2);
+  }
+  .footline{ margin-top:clamp(1.4rem,3.5vh,2.2rem); color:var(--ink-dim); font-size:.9rem; line-height:1.5; max-width:80ch; }
+  .footline b{ color:var(--ink); font-weight:600; }
+
+  figure{ margin:0; }
+  figcaption{ margin-top:.9rem; font-size:.82rem; color:var(--ink-faint); text-align:center; }
+  svg text{ font-family:var(--font-body); }
+  svg .mono-t{ font-family:var(--font-mono); }
+
+  .legend-row{ display:flex; gap:22px; flex-wrap:wrap; justify-content:center; margin-top:.6rem; }
+  .legend-row .item{ display:flex; align-items:center; gap:.5em; font-size:.8rem; color:var(--ink-dim); }
+  .swatch{ width:13px; height:13px; border-radius:4px; flex:none; }
+
+  /* divider slide */
+  .slide.divider .slide-inner{ display:flex; flex-direction:column; align-items:flex-start; justify-content:center; min-height:100%; }
+  .slide.divider .divider-index{ font-family:var(--font-mono); font-size:.85rem; color:var(--ink-faint); margin-bottom:1.2rem; }
+  .slide.divider h1{ font-size:clamp(2.2rem,1.5rem + 3.4vw,4.1rem); font-weight:800; letter-spacing:-.015em; }
+  .slide.divider .slide-sub{ font-size:clamp(1.05rem,.95rem + .4vw,1.3rem); margin-top:1rem; }
+  .slide.divider .rule{ width:64px; height:4px; background:var(--accent); border-radius:4px; margin-top:2rem; }
+
+  /* cover */
+  .cover{ display:grid; grid-template-columns:1.15fr .85fr; gap:48px; align-items:center; min-height:100%; }
+  @media (max-width:860px){ .cover{ grid-template-columns:1fr; } }
+  .cover-eyebrow{ font-family:var(--font-mono); font-size:.78rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:1.1rem; }
+  .cover h1{ font-size:clamp(2.3rem,1.5rem + 3.6vw,4.3rem); font-weight:800; letter-spacing:-.02em; line-height:1.02; }
+  .cover .lede{ margin-top:1.2rem; font-size:clamp(1rem,.94rem + .3vw,1.2rem); color:var(--ink-dim); max-width:52ch; line-height:1.55; }
+  .cover .meta{ margin-top:1.6rem; font-family:var(--font-mono); font-size:.82rem; color:var(--ink-faint); display:flex; align-items:center; gap:.6em; flex-wrap:wrap; }
+  .cover .meta .sep{ color:var(--border); }
+  .agenda{ display:flex; gap:10px; margin-top:2.2rem; flex-wrap:wrap; }
+  .agenda .chip{
+    border:1px solid var(--border); border-radius:10px; padding:.6em .9em; font-size:.78rem; color:var(--ink-dim);
+    display:flex; align-items:center; gap:.6em; background:var(--surface);
+  }
+  .agenda .chip b{ font-family:var(--font-mono); color:var(--accent); }
+  .cover-art{ display:flex; align-items:center; justify-content:center; }
+  .start-hint{ margin-top:2.4rem; display:flex; align-items:center; gap:.6em; color:var(--ink-faint); font-size:.82rem; font-family:var(--font-mono); }
+  .start-hint svg{ width:14px;height:14px; animation:nudge 1.6s ease-in-out infinite; }
+  @keyframes nudge{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(4px);} }
+  @media (prefers-reduced-motion: reduce){ .start-hint svg{ animation:none; } }
+
+  /* request/response cards (07 / 10) */
+  .rr-wrap{ display:grid; grid-template-columns:220px 1fr; gap:32px; align-items:start; }
+  @media (max-width:860px){ .rr-wrap{ grid-template-columns:1fr; } }
+  .user-card{
+    border-radius:14px; padding:20px; text-align:center; box-shadow:var(--shadow);
+    background:var(--accent-soft); border:1px solid var(--accent);
+  }
+  .user-card .who{ font-weight:700; font-family:var(--font-mono); color:var(--accent); font-size:1.02rem; }
+  .user-card .sub{ margin-top:.4em; font-size:.8rem; color:var(--ink-dim); }
+  .rr-stack{ display:flex; flex-direction:column; gap:16px; }
+  .rr-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); }
+  .rr-head{ padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .rr-head h3{ font-size:1rem; font-weight:600; }
+  .rr-body{ padding:16px 20px; display:flex; flex-direction:column; gap:6px; font-size:.85rem; color:var(--ink-dim); }
+  .rr-body .kv{ display:flex; gap:.6em; }
+  .rr-body .kv .k{ color:var(--ink-faint); width:5.5em; flex:none; }
+  .rr-body .kv .v{ font-family:var(--font-mono); color:var(--ink); }
+  .rr-result{ padding:12px 20px; font-family:var(--font-mono); font-weight:600; font-size:.95rem; display:flex; align-items:center; gap:.6em; }
+  .rr-result.deny{ background:var(--bad-soft); color:var(--bad); }
+  .rr-result.allow{ background:var(--good-soft); color:var(--good); }
+  .rr-result svg{ width:16px; height:16px; flex:none; }
+
+  /* pipeline (11) */
+  .pipeline{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; align-items:stretch; }
+  @media (max-width:900px){ .pipeline{ grid-template-columns:1fr; } }
+  .stage{ display:flex; flex-direction:column; gap:10px; position:relative; }
+  .stage-num{ font-family:var(--font-mono); font-size:.72rem; color:var(--ink-faint); }
+  .stage-title{ font-weight:600; font-size:.98rem; margin-top:2px; }
+  .chevron{ position:absolute; top:50%; right:-19px; transform:translateY(-50%); color:var(--ink-faint); z-index:1; }
+  @media (max-width:900px){ .chevron{ display:none; } }
+  .mini-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow); flex:1; }
+  .mini-card p{ font-size:.83rem; color:var(--ink-dim); line-height:1.55; }
+  .mini-card .ep{ margin-bottom:.5em; }
+  .evidence{ font-family:var(--font-mono); font-size:.7rem; color:var(--ink-faint); }
+
+  /* flow boxes (13) */
+  .flow-col{ display:flex; flex-direction:column; align-items:center; gap:0; }
+  .flow-box{ width:100%; border-radius:12px; padding:16px 18px; box-shadow:var(--shadow); border:1px solid var(--border); }
+  .flow-box h4{ font-family:var(--font-display); font-weight:700; font-size:.95rem; margin-bottom:.4em; }
+  .flow-box p{ font-size:.83rem; color:var(--ink-dim); line-height:1.55; }
+  .flow-arrow{ color:var(--ink-faint); margin:2px 0; flex:none; }
+  .flow-fork{ display:grid; grid-template-columns:1fr 1fr; gap:14px; width:100%; }
+  @media (max-width:640px){ .flow-fork{ grid-template-columns:1fr; } }
+
+  /* integration rows (15) */
+  .int-row{
+    display:flex; align-items:flex-start; gap:20px; padding:18px 22px; border-radius:12px;
+    background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--stripe,var(--border));
+    box-shadow:var(--shadow);
+  }
+  .int-num{ font-family:var(--font-mono); font-size:1.3rem; font-weight:600; color:var(--ink-faint); flex:none; width:1.4em; }
+  .int-body{ flex:1; min-width:0; }
+  .int-body h3{ font-size:1.02rem; font-weight:600; }
+  .int-body p{ margin-top:.35em; font-size:.85rem; color:var(--ink-dim); line-height:1.55; }
+  .int-verdict{ flex:none; align-self:center; }
+  @media (max-width:700px){ .int-row{ flex-wrap:wrap; } .int-verdict{ margin-left:calc(1.4em + 20px); } }
+
+  .icon-badge{ width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:none; background:var(--surface-2); border:1px solid var(--border); }
+  .icon-badge svg{ width:22px; height:22px; }
+
+  .two-col-cards{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:820px){ .two-col-cards{ grid-template-columns:1fr; } }
+  .answer-line{ margin-top:.8em; padding-top:.8em; border-top:1px dashed var(--border); font-size:.85rem; color:var(--ink); }
+  .answer-line b{ color:var(--accent); }
+
+  .big-step{ border-radius:16px; padding:26px 28px; box-shadow:var(--shadow); border:1px solid var(--border); display:flex; gap:20px; }
+  .big-step .num{ font-family:var(--font-display); font-size:2.2rem; font-weight:800; flex:none; line-height:1; opacity:.5; }
+  .big-step h3{ font-size:1.15rem; font-weight:700; }
+  .big-step p{ margin-top:.5em; font-size:.9rem; color:var(--ink-dim); line-height:1.6; }
+
+  @media (max-width:640px){
+    .grid-2, .rr-wrap{ grid-template-columns:1fr; }
+    .navbar{ gap:8px; }
+    .nav-outline-btn{ padding:.5em .7em; }
+  }
+</style>
+
+<div class="eyebrow-row">
+  <span class="brand">Open FGA Authorization</span>
+  <span id="sectionLabel">Cover</span>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- 0 COVER -->
+  <section class="slide active" data-title="Cover" data-group="">
+    <div class="slide-inner cover">
+      <div>
+        <div class="cover-eyebrow">Proof of concept · Internal review</div>
+        <h1>Permissions that follow<br>the hierarchy, not a role name.</h1>
+        <p class="lede">How the Business Hierarchy Suite uses OpenFGA and relationship-based access control (ReBAC) to grant, inherit, and check visibility across Client → Project → Zone → Structure — with a live walkthrough and a roadmap for what ships next.</p>
+        <div class="meta">
+          <span>client → project → zone → structure</span><span class="sep">/</span>
+          <span>OpenFGA · FastAPI · PostgreSQL</span>
+        </div>
+        <div class="agenda">
+          <span class="chip"><b>01</b> Foundations</span>
+          <span class="chip"><b>02</b> Live walkthrough</span>
+          <span class="chip"><b>03</b> Operations &amp; roadmap</span>
+        </div>
+        <div class="start-hint">
+          Press → or space to begin
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16M6 14l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div class="cover-art">
+        <svg viewBox="0 0 380 320" width="100%" style="max-width:380px" role="img" aria-label="A user connected by a highlighted viewer relationship to a zone nested under a project and client">
+          <defs>
+            <marker id="capArrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)"/></marker>
+          </defs>
+          <line x1="190" y1="40" x2="190" y2="110" stroke="var(--ink-faint)" stroke-width="2"/>
+          <line x1="190" y1="150" x2="120" y2="210" stroke="var(--ink-faint)" stroke-width="2"/>
+          <line x1="190" y1="150" x2="260" y2="210" stroke="var(--ink-faint)" stroke-width="2"/>
+          <line x1="120" y1="250" x2="120" y2="270" stroke="var(--ink-faint)" stroke-width="2" stroke-dasharray="3 4"/>
+          <line x1="260" y1="250" x2="260" y2="270" stroke="var(--ink-faint)" stroke-width="2" stroke-dasharray="3 4"/>
+          <path d="M55,60 C90,120 100,170 116,206" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="1 7" stroke-linecap="round" marker-end="url(#capArrow)"/>
+          <text x="70" y="150" class="mono-t" font-size="11" fill="var(--accent)" transform="rotate(58 70 150)">viewer</text>
+          <circle cx="45" cy="46" r="26" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="45" y="50" text-anchor="middle" font-size="11" fill="var(--accent)" class="mono-t">user</text>
+          <rect x="150" y="14" width="80" height="34" rx="8" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="190" y="35" text-anchor="middle" font-size="11" fill="var(--accent-2)">client</text>
+          <rect x="150" y="112" width="80" height="34" rx="8" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="190" y="133" text-anchor="middle" font-size="11" fill="var(--accent-2)">project</text>
+          <rect x="80" y="212" width="80" height="34" rx="8" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="120" y="233" text-anchor="middle" font-size="11" fill="var(--accent-2)">zone</text>
+          <rect x="220" y="212" width="80" height="34" rx="8" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="2" opacity=".45"/>
+          <text x="260" y="233" text-anchor="middle" font-size="11" fill="var(--accent-2)" opacity=".7">zone</text>
+          <rect x="83" y="272" width="74" height="30" rx="7" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="120" y="291" text-anchor="middle" font-size="10" fill="var(--leaf)">structure</text>
+          <rect x="223" y="272" width="74" height="30" rx="7" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2" opacity=".4"/>
+          <text x="260" y="291" text-anchor="middle" font-size="10" fill="var(--leaf)" opacity=".7">structure</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 0b AGENDA -->
+  <section class="slide" data-title="What we're going to cover" data-group="">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Before we start</p>
+        <h1 class="slide-title">What we're going to cover</h1>
+        <p class="slide-sub">One question, answered in three parts: can we grant access at any level of a business hierarchy — client, project, zone, structure — and have it inherit correctly, deny correctly, and leave a trail?</p>
+      </div>
+      <div class="grid-3" style="align-items:stretch;">
+        <div class="card">
+          <span class="tag blue">Part 1</span>
+          <h3 style="margin-top:.6em;">Foundations</h3>
+          <p>The concepts and the system underneath the demo.</p>
+          <ul style="margin-top:12px;">
+            <li>What ReBAC is, and why plain RBAC falls short here</li>
+            <li>The Gold Layer database and how the app talks to OpenFGA</li>
+            <li>The table schema — what's a real foreign key vs. an OpenFGA-only link</li>
+            <li>What OpenFGA does and doesn't store</li>
+          </ul>
+        </div>
+        <div class="card" style="background:var(--accent-soft); border-color:var(--accent);">
+          <span class="tag violet">Part 2</span>
+          <h3 style="margin-top:.6em; color:var(--accent);">Live walkthrough</h3>
+          <p style="color:var(--ink);">A real hierarchy, a real user, run end to end.</p>
+          <ul style="margin-top:12px; color:var(--ink);">
+            <li>A four-level India hierarchy: client → project → zones → structures</li>
+            <li>A brand-new user with zero access — checked and denied</li>
+            <li>One grant at zone level — watch it inherit down the tree</li>
+            <li>The same checks passing, plus the core APIs behind it all</li>
+          </ul>
+        </div>
+        <div class="card" style="background:var(--leaf-soft); border-color:var(--leaf);">
+          <span class="tag amber">Part 3</span>
+          <h3 style="margin-top:.6em; color:var(--leaf);">Operations &amp; roadmap</h3>
+          <p style="color:var(--ink);">Running this for real, and what's next.</p>
+          <ul style="margin-top:12px; color:var(--ink);">
+            <li>Audit &amp; logging — two logs, two different questions answered</li>
+            <li>How we handle foreseeable changes without breaking the model</li>
+            <li>What ships next, and how services should call OpenFGA</li>
+          </ul>
+        </div>
+      </div>
+      <p class="footline">Everything after this slide is either a diagram of how it's built, or a live check that proves it works.</p>
+    </div>
+  </section>
+
+  <!-- 1 WHAT IS REBAC -->
+  <section class="slide" data-title="What is ReBAC, and why do we need it?" data-group="Foundations">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Foundations</p>
+        <h1 class="slide-title">What is ReBAC, and why do we need it?</h1>
+        <p class="slide-sub">ReBAC (Relationship-Based Access Control): access is decided by the <em>relationship</em> between a user and a resource — not by a role name. e.g. "is this user a viewer of this zone, or of its parent project/client?"</p>
+      </div>
+      <div class="grid-2" style="align-items:stretch;">
+        <div class="card">
+          <span class="tag neutral">Traditional RBAC</span>
+          <ul style="margin-top:14px;">
+            <li>Permissions attach to a <b style="color:var(--ink)">role</b> (admin, editor, viewer)</li>
+            <li>A role is usually global, or per resource-type — not per single resource instance</li>
+            <li>Breaks down when one user needs different access to different individual resources</li>
+            <li>Breaks down when access should flow through a deep, changing hierarchy</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:var(--good); background:var(--good-soft);">
+          <span class="tag good">ReBAC (OpenFGA)</span>
+          <ul style="margin-top:14px; color:var(--ink);">
+            <li>A permission <b>is</b> a relationship tuple: <span class="mono">(user, relation, object)</span></li>
+            <li>A grant is scoped to one specific resource instance (this zone, this client) — not a role name</li>
+            <li>Inheritance follows the real hierarchy: grant once at a client/project/zone and it flows down automatically</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note" style="margin-top:20px; background:var(--leaf-soft); border-style:solid; border-color:var(--leaf);">
+        <b style="color:var(--leaf); text-transform:uppercase; font-family:var(--font-mono); font-size:.72rem; letter-spacing:.06em;">Choose ReBAC over plain RBAC when —</b>
+        <ul style="margin-top:10px; color:var(--ink);">
+          <li>Sharing must be fine-grained and resource-specific ("this exact zone", not "all zones")</li>
+          <li>Permissions must flow through a deep, possibly-changing hierarchy (client → project → zone → zone → structure)</li>
+          <li>A fixed set of roles can't express it without exploding into hundreds of one-off roles</li>
+        </ul>
+      </div>
+      <p class="footline">This PoC's proof: a single grant at <b>client:govt-of-india#viewer</b> automatically reaches every zone, nested zone, and structure beneath it — no per-resource role, and no code change when the hierarchy grows.</p>
+    </div>
+  </section>
+
+  <!-- 2 DIVIDER: GOLD LAYER -->
+  <section class="slide divider" data-title="Gold Layer Database" data-group="Foundations">
+    <div class="slide-inner">
+      <div class="divider-index">§ Foundations</div>
+      <h1>Architected commercial business hierarchy<br>— Gold Layer Database</h1>
+      <p class="slide-sub">Clients → Projects → Structures</p>
+      <div class="rule"></div>
+    </div>
+  </section>
+
+  <!-- 3 ARCHITECTURE -->
+  <section class="slide" data-title="Architecture" data-group="Foundations">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Foundations</p>
+        <h1 class="slide-title">OpenFGA ReBAC PoC — Architecture</h1>
+        <p class="slide-sub">One app, two stores: business data stays in Postgres, authorization decisions live entirely in OpenFGA.</p>
+      </div>
+      <figure>
+        <svg viewBox="0 0 940 600" width="100%" role="img" aria-label="Postman calls the FastAPI app, which reads and writes business data in the Gold Layer database and calls OpenFGA for check, grant and tree operations; OpenFGA stores tuples in its own internal PostgreSQL that the app never accesses directly.">
+          <defs>
+            <marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor"/></marker>
+          </defs>
+          <g fill="none" stroke="currentColor" stroke-width="1.6" color="var(--ink-faint)">
+            <line x1="220" y1="220" x2="356" y2="220" marker-end="url(#a1)"/>
+            <line x1="420" y1="266" x2="330" y2="336" marker-end="url(#a1)"/>
+            <line x1="548" y1="266" x2="650" y2="336" marker-end="url(#a1)"/>
+            <line x1="705" y1="510" x2="705" y2="541" marker-end="url(#a1)"/>
+          </g>
+          <text x="288" y="210" text-anchor="middle" font-size="12" fill="var(--ink-faint)">HTTP</text>
+          <text x="345" y="292" text-anchor="middle" font-size="12" fill="var(--ink-faint)">business CRUD</text>
+          <text x="628" y="292" text-anchor="middle" font-size="12" fill="var(--ink-faint)">check · grant · tree</text>
+          <text x="722" y="530" font-size="11" fill="var(--ink-faint)">tuples</text>
+
+          <rect x="30" y="175" width="190" height="90" rx="12" fill="var(--surface)" stroke="var(--ink-faint)" stroke-width="1.6"/>
+          <text x="125" y="226" text-anchor="middle" font-size="14" fill="var(--ink)">Postman / API Client</text>
+
+          <rect x="360" y="175" width="248" height="90" rx="12" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="484" y="214" text-anchor="middle" font-size="14.5" font-weight="600" fill="var(--accent-2)">FastAPI App</text>
+          <text x="484" y="235" text-anchor="middle" font-size="12" class="mono-t" fill="var(--accent-2)">datalake-core-api</text>
+
+          <rect x="140" y="340" width="290" height="168" rx="12" fill="var(--surface)" stroke="var(--ink-faint)" stroke-width="1.6"/>
+          <text x="165" y="372" font-size="14.5" font-weight="600" fill="var(--ink)">Gold Layer Database</text>
+          <text x="165" y="396" font-size="12" fill="var(--ink-dim)">Business data only:</text>
+          <text x="165" y="416" font-size="12" fill="var(--ink-dim)">users · clients · projects</text>
+          <text x="165" y="434" font-size="12" fill="var(--ink-dim)">structures · audit_events</text>
+
+          <rect x="560" y="340" width="290" height="168" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="585" y="372" font-size="14.5" font-weight="600" fill="var(--accent)">OpenFGA</text>
+          <text x="585" y="396" font-size="12" fill="var(--accent)">Source of truth for:</text>
+          <text x="585" y="416" font-size="12" fill="var(--accent)">· who can see what</text>
+          <text x="585" y="434" font-size="12" fill="var(--accent)">· the zone hierarchy shape</text>
+          <text x="585" y="452" font-size="12" fill="var(--accent)">(client → project → zone → structure)</text>
+
+          <rect x="560" y="545" width="290" height="66" rx="10" fill="none" stroke="var(--ink-faint)" stroke-width="1.4" stroke-dasharray="5 5"/>
+          <text x="705" y="570" text-anchor="middle" font-size="12" fill="var(--ink-dim)">OpenFGA's own PostgreSQL</text>
+          <text x="705" y="588" text-anchor="middle" font-size="11" fill="var(--ink-faint)">internal only — app never connects directly</text>
+        </svg>
+        <figcaption>Two data stores, one caller: the app never reaches OpenFGA's internal Postgres, and OpenFGA never sees business fields.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 4 DATABASE SCHEMA -->
+  <section class="slide" data-title="Database tables + relations" data-group="Foundations">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Foundations</p>
+        <h1 class="slide-title">Database tables + relations</h1>
+        <p class="slide-sub">Only <span class="mono">clients → projects</span> is a real foreign key. Everything below a project is shape known only to OpenFGA.</p>
+      </div>
+      <figure>
+        <svg viewBox="0 0 1220 500" width="100%" role="img" aria-label="clients links to projects by a real foreign key; projects links to zones and to structures by OpenFGA tuples only, and zones link to structures and to other zones the same way, with no foreign key.">
+          <defs>
+            <marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor"/></marker>
+          </defs>
+          <g fill="none" stroke="var(--ink)" stroke-width="1.8" color="var(--ink)">
+            <line x1="270" y1="120" x2="330" y2="120" marker-end="url(#a2)"/>
+          </g>
+          <text x="300" y="106" text-anchor="middle" font-size="11" fill="var(--ink)">FK client_id</text>
+
+          <g fill="none" stroke="var(--ink-faint)" stroke-width="1.6" color="var(--ink-faint)" stroke-dasharray="5 5">
+            <line x1="455" y1="200" x2="455" y2="300" marker-end="url(#a2)"/>
+            <line x1="580" y1="105" x2="640" y2="105" marker-end="url(#a2)"/>
+            <line x1="580" y1="360" x2="700" y2="175" marker-end="url(#a2)"/>
+          </g>
+          <text x="470" y="252" font-size="10.5" fill="var(--ink-faint)">tuple only</text>
+          <text x="562" y="92" text-anchor="middle" font-size="10.5" fill="var(--ink-faint)">tuple only</text>
+          <text x="660" y="255" font-size="10.5" fill="var(--ink-faint)" transform="rotate(-52 660 255)">tuple only (nesting)</text>
+
+          <path d="M355,300 C345,270 435,270 420,298" fill="none" stroke="var(--ink-faint)" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#a2)"/>
+          <text x="330" y="264" font-size="10" fill="var(--ink-faint)">self</text>
+
+          <!-- clients -->
+          <rect x="40" y="50" width="230" height="130" rx="10" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="1.8"/>
+          <text x="58" y="76" font-size="14" font-weight="600" fill="var(--accent-2)">clients</text>
+          <text x="58" y="98" font-size="11.5" class="mono-t" fill="var(--ink-dim)">id (PK)</text>
+          <text x="58" y="116" font-size="11.5" class="mono-t" fill="var(--ink-dim)">name (unique)</text>
+          <text x="58" y="134" font-size="11.5" class="mono-t" fill="var(--ink-dim)">created_at</text>
+
+          <!-- projects -->
+          <rect x="330" y="50" width="250" height="150" rx="10" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="1.8"/>
+          <text x="348" y="76" font-size="14" font-weight="600" fill="var(--accent-2)">projects</text>
+          <text x="348" y="98" font-size="11.5" class="mono-t" fill="var(--ink-dim)">id (PK)</text>
+          <text x="348" y="116" font-size="11.5" class="mono-t" fill="var(--ink-dim)">client_id → clients (FK)</text>
+          <text x="348" y="134" font-size="11.5" class="mono-t" fill="var(--ink-dim)">name</text>
+          <text x="348" y="152" font-size="11.5" class="mono-t" fill="var(--ink-dim)">created_at</text>
+
+          <!-- structures -->
+          <rect x="640" y="50" width="230" height="130" rx="10" fill="var(--surface)" stroke="var(--leaf)" stroke-width="1.8"/>
+          <text x="658" y="76" font-size="14" font-weight="600" fill="var(--leaf)">structures</text>
+          <text x="658" y="98" font-size="11.5" class="mono-t" fill="var(--ink-dim)">id (PK)</text>
+          <text x="658" y="116" font-size="11.5" class="mono-t" fill="var(--ink-dim)">name</text>
+          <text x="658" y="134" font-size="11.5" class="mono-t" fill="var(--ink-dim)">created_at</text>
+
+          <!-- audit_events -->
+          <rect x="930" y="50" width="250" height="188" rx="10" fill="var(--surface)" stroke="var(--ink-faint)" stroke-width="1.6"/>
+          <text x="948" y="76" font-size="14" font-weight="600" fill="var(--ink)">audit_events</text>
+          <text x="948" y="98" font-size="11.5" class="mono-t" fill="var(--ink-dim)">id (PK)</text>
+          <text x="948" y="116" font-size="11.5" class="mono-t" fill="var(--ink-dim)">event_type, actor</text>
+          <text x="948" y="134" font-size="11.5" class="mono-t" fill="var(--ink-dim)">resource_type, resource_id</text>
+          <text x="948" y="152" font-size="11.5" class="mono-t" fill="var(--ink-dim)">action, result, metadata</text>
+          <text x="948" y="170" font-size="11.5" class="mono-t" fill="var(--ink-dim)">created_at</text>
+
+          <!-- users -->
+          <rect x="40" y="300" width="230" height="110" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.8"/>
+          <text x="58" y="326" font-size="14" font-weight="600" fill="var(--accent)">users</text>
+          <text x="58" y="348" font-size="11.5" class="mono-t" fill="var(--ink-dim)">id (PK)</text>
+          <text x="58" y="366" font-size="11.5" class="mono-t" fill="var(--ink-dim)">name</text>
+          <text x="58" y="384" font-size="11.5" class="mono-t" fill="var(--ink-dim)">created_at</text>
+          <text x="58" y="432" font-size="10.5" fill="var(--ink-faint)">referenced as user:&lt;id&gt; in OpenFGA</text>
+          <text x="58" y="447" font-size="10.5" fill="var(--ink-faint)">— no FK to any table</text>
+
+          <!-- zones -->
+          <rect x="330" y="300" width="250" height="110" rx="10" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="1.8"/>
+          <text x="348" y="326" font-size="14" font-weight="600" fill="var(--accent-2)">zones</text>
+          <text x="348" y="348" font-size="11.5" class="mono-t" fill="var(--ink-dim)">id (PK)</text>
+          <text x="348" y="366" font-size="11.5" class="mono-t" fill="var(--ink-dim)">name</text>
+          <text x="348" y="384" font-size="11.5" class="mono-t" fill="var(--ink-dim)">parent_type, parent_id</text>
+          <text x="348" y="432" font-size="10.5" fill="var(--ink-faint)">nests under other zones,</text>
+          <text x="348" y="447" font-size="10.5" fill="var(--ink-faint)">unlimited depth</text>
+        </svg>
+      </figure>
+      <div class="legend-row">
+        <div class="item"><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--ink)" stroke-width="2"/></svg> solid = real foreign key</div>
+        <div class="item"><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="var(--ink-faint)" stroke-width="2" stroke-dasharray="4 3"/></svg> dashed = OpenFGA tuple only, no FK, enforced by OpenFGA</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 OPENFGA ROLE -->
+  <section class="slide" data-title="OpenFGA = Authorization Source of Truth" data-group="Foundations">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Foundations</p>
+        <h1 class="slide-title">OpenFGA = authorization source of truth</h1>
+        <p class="slide-sub">A clean split: OpenFGA knows the shape of "who can see what." Postgres knows everything else.</p>
+      </div>
+      <div class="grid-2">
+        <div class="card" style="background:var(--good-soft); border-color:var(--good);">
+          <span class="tag good">OpenFGA stores</span>
+          <ul style="margin-top:14px; color:var(--ink);">
+            <li>Relationship tuples — <span class="mono">(user, relation, object)</span></li>
+            <li>The authorization model (types + relations, e.g. <span class="mono">model.fga</span>)</li>
+          </ul>
+        </div>
+        <div class="card" style="background:var(--bad-soft); border-color:var(--bad);">
+          <span class="tag bad">OpenFGA does NOT store</span>
+          <ul style="margin-top:14px; color:var(--ink);">
+            <li>Names or any business fields</li>
+            <li>PII</li>
+            <li>Anything from the schema page — that all lives in Postgres</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note" style="margin-top:20px; display:flex; align-items:center; gap:16px;">
+        <div class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" color="var(--ink-dim)"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M8 8h8M8 16h5"/></svg></div>
+        <span>Reference: OpenFGA's own architecture diagram at <span class="mono">openfga.dev</span> is a good companion visual to drop in alongside this split.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 INDIA HIERARCHY -->
+  <section class="slide" data-title="India Scenario — Business Hierarchy" data-group="Live walkthrough">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Live walkthrough</p>
+        <h1 class="slide-title">India scenario — business hierarchy</h1>
+        <p class="slide-sub mono">client → project → zone → structure</p>
+      </div>
+      <figure>
+        <svg viewBox="0 0 1120 520" width="100%" role="img" aria-label="Govt of India client contains the Indian Railway project, which fans out to zones North, South and Western; North contains a nested Delhi zone with two structures, South and Western each contain one structure.">
+          <defs>
+            <marker id="a3" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="var(--ink-faint)"/></marker>
+          </defs>
+          <g fill="none" stroke="var(--ink-faint)" stroke-width="1.6">
+            <path d="M590,94 V130" marker-end="url(#a3)"/>
+            <path d="M590,194 V212 H220 V230" marker-end="url(#a3)"/>
+            <path d="M590,194 V230" marker-end="url(#a3)"/>
+            <path d="M590,212 H960 V230" marker-end="url(#a3)"/>
+            <path d="M220,294 V330" marker-end="url(#a3)"/>
+            <path d="M220,394 V412 H120 V432" marker-end="url(#a3)"/>
+            <path d="M220,412 H320 V432" marker-end="url(#a3)"/>
+            <path d="M590,294 V432" marker-end="url(#a3)"/>
+            <path d="M960,294 V432" marker-end="url(#a3)"/>
+          </g>
+
+          <rect x="495" y="30" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="590" y="57" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Govt of India</text>
+          <text x="590" y="76" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">client</text>
+
+          <rect x="495" y="130" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="590" y="157" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Indian Railway</text>
+          <text x="590" y="176" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">project</text>
+
+          <rect x="125" y="230" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="220" y="257" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Zone: North</text>
+          <text x="220" y="276" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">zone</text>
+
+          <rect x="495" y="230" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="590" y="257" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Zone: South</text>
+          <text x="590" y="276" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">zone</text>
+
+          <rect x="865" y="230" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="960" y="257" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Zone: Western</text>
+          <text x="960" y="276" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">zone</text>
+
+          <rect x="125" y="330" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="220" y="355" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Zone: Delhi</text>
+          <text x="220" y="374" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">zone · parent = North</text>
+
+          <rect x="35" y="432" width="170" height="58" rx="9" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="120" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--leaf)">Yamuna Bridge</text>
+          <text x="120" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--leaf)">structure</text>
+
+          <rect x="235" y="432" width="170" height="58" rx="9" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="320" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--leaf)">Agra Bridge</text>
+          <text x="320" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--leaf)">structure</text>
+
+          <rect x="505" y="432" width="170" height="58" rx="9" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="590" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--leaf)">Kerala Bridge</text>
+          <text x="590" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--leaf)">structure</text>
+
+          <rect x="875" y="432" width="170" height="58" rx="9" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="960" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--leaf)">Goa Bridge</text>
+          <text x="960" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--leaf)">structure</text>
+        </svg>
+        <figcaption>A four-level hierarchy — everything below "Indian Railway" is shape that lives only in OpenFGA.</figcaption>
+      </figure>
+      <div class="legend-row">
+        <div class="item"><span class="swatch" style="background:var(--accent-2)"></span> org unit — client / project / zone</div>
+        <div class="item"><span class="swatch" style="background:var(--leaf)"></span> structure — leaf resource</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 DIVIDER: SECURITY TESTS -->
+  <section class="slide divider" data-title="Security Tests" data-group="Live walkthrough">
+    <div class="slide-inner">
+      <div class="divider-index">§ Live walkthrough</div>
+      <h1>Security tests</h1>
+      <p class="slide-sub mono">Postman · 09 — Security Tests</p>
+      <div class="rule"></div>
+    </div>
+  </section>
+
+  <!-- 8 JOHN NO ACCESS -->
+  <section class="slide" data-title="John as a User — No Access" data-group="Live walkthrough">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Live walkthrough</p>
+        <h1 class="slide-title">John as a user — no access</h1>
+        <p class="slide-sub"><span class="mono">user:john</span> has zero OpenFGA tuples anywhere in the India hierarchy.</p>
+      </div>
+      <div class="rr-wrap">
+        <div class="user-card">
+          <div class="who">user:john</div>
+          <div class="sub">brand new user</div>
+        </div>
+        <div class="rr-stack">
+          <div class="rr-card">
+            <div class="rr-head">
+              <h3>Per-structure check</h3>
+              <span class="endpoint"><span class="verb">GET</span>/authorization/check</span>
+            </div>
+            <div class="rr-body">
+              <div class="kv"><span class="k">user</span><span class="v">user:john</span></div>
+              <div class="kv"><span class="k">relation</span><span class="v">viewer</span></div>
+              <div class="kv"><span class="k">object</span><span class="v">structure:yamuna-bridge</span></div>
+            </div>
+            <div class="rr-result deny">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              {"allowed": false}
+            </div>
+          </div>
+          <div class="rr-card">
+            <div class="rr-head">
+              <h3>Tree check</h3>
+              <span class="endpoint"><span class="verb">GET</span>/clients/govt-of-india/tree</span>
+            </div>
+            <div class="rr-body">
+              <div class="kv"><span class="k">user</span><span class="v">user:john</span></div>
+              <span>no viewer relation on client, project, any zone, or any structure below it</span>
+            </div>
+            <div class="rr-result deny">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              404 Not Found — nothing visible
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="footline">Both checks deny — demo live in Postman next.</p>
+    </div>
+  </section>
+
+  <!-- 9 DIVIDER: GRANT CLIENT LEVEL -->
+  <section class="slide divider" data-title="Grant: Client-Level Viewer Access" data-group="Live walkthrough">
+    <div class="slide-inner">
+      <div class="divider-index">§ Live walkthrough</div>
+      <h1>Grant: client-level viewer access</h1>
+      <p class="slide-sub mono">POST /authorization/grant · Postman: 06 — Authorization</p>
+      <div class="rule"></div>
+    </div>
+  </section>
+
+  <!-- 10 GRANT JOHN ZONE NORTH -->
+  <section class="slide" data-title="Authorization Grant — Zone-Level Access to North" data-group="Live walkthrough">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Live walkthrough</p>
+        <h1 class="slide-title">Authorization grant — zone-level access to North</h1>
+        <p class="slide-sub mono">POST /authorization/grant &#123; user: user:john, resource_type: zone, resource_id: north, permission: viewer &#125;</p>
+      </div>
+      <figure>
+        <svg viewBox="0 0 1280 560" width="100%" role="img" aria-label="user:john is granted viewer on Zone North; North, its nested Delhi zone, and their two structures fall inside the inherited-access boundary, while South and Western remain outside it.">
+          <defs>
+            <marker id="a4" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="var(--ink-faint)"/></marker>
+            <marker id="a5" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="var(--accent)"/></marker>
+          </defs>
+          <g fill="none" stroke="var(--ink-faint)" stroke-width="1.6">
+            <path d="M740,94 V130" marker-end="url(#a4)"/>
+            <path d="M740,194 V212 H370 V230" marker-end="url(#a4)"/>
+            <path d="M740,194 V230" marker-end="url(#a4)"/>
+            <path d="M740,212 H1110 V230" marker-end="url(#a4)"/>
+            <path d="M370,294 V330" marker-end="url(#a4)"/>
+            <path d="M370,394 V412 H270 V432" marker-end="url(#a4)"/>
+            <path d="M370,412 H470 V432" marker-end="url(#a4)"/>
+            <path d="M740,294 V432" marker-end="url(#a4)"/>
+            <path d="M1110,294 V432" marker-end="url(#a4)"/>
+          </g>
+
+          <rect x="20" y="228" width="180" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="110" y="255" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent)">user:john</text>
+          <text x="110" y="274" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent)">granted here</text>
+          <line x1="200" y1="260" x2="264" y2="260" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#a5)"/>
+          <text x="232" y="245" text-anchor="middle" font-size="10.5" fill="var(--accent)">grant: viewer</text>
+
+          <rect x="320" y="212" width="400" height="292" rx="14" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="332" y="200" font-size="11" fill="var(--accent)">inherits from North</text>
+
+          <rect x="645" y="30" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="740" y="57" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Govt of India</text>
+          <text x="740" y="76" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">client</text>
+
+          <rect x="645" y="130" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="740" y="157" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Indian Railway</text>
+          <text x="740" y="176" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">project</text>
+
+          <rect x="275" y="230" width="190" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2.4"/>
+          <text x="370" y="257" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent)">Zone: North</text>
+          <text x="370" y="276" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent)">viewer granted</text>
+
+          <rect x="645" y="230" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="740" y="257" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Zone: South</text>
+          <text x="740" y="276" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">untouched</text>
+
+          <rect x="1015" y="230" width="190" height="64" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="1110" y="257" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Zone: Western</text>
+          <text x="1110" y="276" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent-2)">untouched</text>
+
+          <rect x="275" y="330" width="190" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="370" y="355" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent)">Zone: Delhi</text>
+          <text x="370" y="374" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent)">inherited</text>
+
+          <rect x="185" y="432" width="170" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="270" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--accent)">Yamuna Bridge</text>
+          <text x="270" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent)">inherited</text>
+
+          <rect x="385" y="432" width="170" height="58" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="470" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--accent)">Agra Bridge</text>
+          <text x="470" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--accent)">inherited</text>
+
+          <rect x="655" y="432" width="170" height="58" rx="9" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="740" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--leaf)">Kerala Bridge</text>
+          <text x="740" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--leaf)">structure</text>
+
+          <rect x="1025" y="432" width="170" height="58" rx="9" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="1110" y="457" text-anchor="middle" font-size="12.5" font-weight="600" fill="var(--leaf)">Goa Bridge</text>
+          <text x="1110" y="475" text-anchor="middle" font-size="10.5" class="mono-t" fill="var(--leaf)">structure</text>
+        </svg>
+      </figure>
+      <p class="footline">Delhi + Yamuna Bridge + Agra Bridge inherit access from North. South / Western are untouched.</p>
+    </div>
+  </section>
+
+  <!-- 11 CHECKS AFTER GRANT -->
+  <section class="slide" data-title="Authorization Checks — After the Grant" data-group="Live walkthrough">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Live walkthrough</p>
+        <h1 class="slide-title">Authorization checks — after the grant</h1>
+        <p class="slide-sub"><span class="mono">user:john</span> now has zone-level viewer access to North.</p>
+      </div>
+      <div class="rr-wrap">
+        <div class="user-card">
+          <div class="who">user:john</div>
+          <div class="sub">zone:north viewer</div>
+        </div>
+        <div class="rr-stack">
+          <div class="rr-card">
+            <div class="rr-head">
+              <h3>Per-structure check</h3>
+              <span class="endpoint"><span class="verb">GET</span>/authorization/check</span>
+            </div>
+            <div class="rr-body">
+              <div class="kv"><span class="k">user</span><span class="v">user:john</span></div>
+              <div class="kv"><span class="k">relation</span><span class="v">viewer</span></div>
+              <div class="kv"><span class="k">object</span><span class="v">structure:yamuna-bridge</span></div>
+              <span>inherits: north → delhi → yamuna-bridge</span>
+            </div>
+            <div class="rr-result allow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
+              {"allowed": true}
+            </div>
+          </div>
+          <div class="rr-card">
+            <div class="rr-head">
+              <h3>Tree check</h3>
+              <span class="endpoint"><span class="verb">GET</span>/clients/govt-of-india/tree</span>
+            </div>
+            <div class="rr-body">
+              <span>govt-of-india → indian-railway (pass-through) → north → delhi → yamuna-bridge, agra-bridge</span>
+              <span>south / western / kerala / goa: pruned (not visible)</span>
+            </div>
+            <div class="rr-result allow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
+              200 OK — pruned tree returned
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="footline">Both checks allow — demo live in Postman next.</p>
+    </div>
+  </section>
+
+  <!-- 12 CORE APIS -->
+  <section class="slide" data-title="Core APIs used in the demo" data-group="Live walkthrough">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Live walkthrough</p>
+        <h1 class="slide-title">Core APIs used in the demo</h1>
+        <p class="slide-sub">Only the endpoints the demo narrative actually uses — not the full API surface. Screenshots 06–12 show these exact calls running.</p>
+      </div>
+      <div class="pipeline">
+        <div class="stage">
+          <div class="stage-num">01</div>
+          <div class="stage-title">Gold Layer from commercial hierarchy</div>
+          <div class="mini-card" style="flex:1;">
+            <p>Client → Project → Structures seeded directly into Postgres.</p>
+            <p class="evidence" style="margin-top:10px;">Evidence: 06 (clients list), 07 (projects list)</p>
+          </div>
+          <div class="chevron"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+        <div class="stage">
+          <div class="stage-num">02</div>
+          <div class="stage-title">Build hierarchy</div>
+          <div class="mini-card ep"><span class="endpoint"><span class="verb">POST</span>/zones</span><p style="margin-top:8px;">Recursive: parent = project or another zone — OpenFGA only.</p></div>
+          <div class="mini-card ep"><span class="endpoint"><span class="verb">POST</span>/structures</span><p style="margin-top:8px;">Leaf resource: parent = a project or a zone.</p></div>
+          <p class="evidence">Evidence: 08 (zone endpoints folder)</p>
+          <div class="chevron"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+        <div class="stage">
+          <div class="stage-num">03</div>
+          <div class="stage-title">Build authorize grant</div>
+          <div class="mini-card" style="flex:1;">
+            <span class="endpoint"><span class="verb">POST</span>/authorization/grant</span>
+            <p style="margin-top:8px;">Grant a user viewer access at any level of the hierarchy.</p>
+          </div>
+          <div class="chevron"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+        <div class="stage">
+          <div class="stage-num">04</div>
+          <div class="stage-title">Authorization checks</div>
+          <div class="mini-card ep"><span class="endpoint"><span class="verb">GET</span>/authorization/check</span><p style="margin-top:8px;">Is this user allowed to view this resource?</p><p class="evidence" style="margin-top:8px;">Evidence: 09 (grant), 10 (check → allowed: true)</p></div>
+          <div class="mini-card ep"><span class="endpoint"><span class="verb">GET</span>/clients/&#123;id&#125;/tree</span><p style="margin-top:8px;">Full hierarchy, pruned to exactly what this user can see — this is the payoff.</p><p class="evidence" style="margin-top:8px;">Evidence: 11 (pruned tree response)</p></div>
+        </div>
+      </div>
+      <div class="note" style="margin-top:20px; background:var(--accent-soft); border-style:solid; border-color:var(--accent); color:var(--ink);">
+        <b style="color:var(--accent); font-family:var(--font-mono); text-transform:uppercase; font-size:.72rem; letter-spacing:.06em;">Bonus</b> — 09: Security Tests (screenshot 12): cross-client denial, cross-branch denial, no upward inheritance, zero-grant denial, anti-enumeration. Not needed to tell the core story, but proves it's not just a demo-happy-path.
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 AUDIT AND LOGGING -->
+  <section class="slide" data-title="Audit & Logging with OpenFGA" data-group="Operations & roadmap">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Operations &amp; roadmap</p>
+        <h1 class="slide-title">Audit &amp; logging with OpenFGA</h1>
+        <p class="slide-sub">Two separate logs answer two separate questions — and the same OpenFGA deployment scales to many applications.</p>
+      </div>
+      <div class="two-col-cards">
+        <div class="card" style="background:var(--good-soft); border-color:var(--good);">
+          <h3 style="color:var(--good);">Application <span class="mono">audit_events</span> (Postgres)</h3>
+          <ul style="color:var(--ink);">
+            <li><span class="mono">action</span> — e.g. create, grant</li>
+            <li><span class="mono">result</span> — success, denied</li>
+            <li><span class="mono">metadata</span> — free-form context</li>
+            <li><span class="mono">created_at</span> — when it happened</li>
+          </ul>
+          <div class="answer-line">Answers: <b>which user did what, and did it succeed?</b></div>
+        </div>
+        <div class="card" style="background:var(--leaf-soft); border-color:var(--leaf);">
+          <h3 style="color:var(--leaf);">OpenFGA's own changelog table</h3>
+          <ul style="color:var(--ink);">
+            <li><span class="mono">store_id</span> — which OpenFGA store</li>
+            <li><span class="mono">user, relation, object</span> — the tuple</li>
+            <li><span class="mono">operation</span> — insert (grant) vs delete (revoke)</li>
+            <li>high-precision timestamp</li>
+          </ul>
+          <div class="answer-line">Answers: <b>when was this exact permission granted or revoked?</b></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px; background:var(--accent-2-soft); border-color:var(--accent-2);">
+        <h3 style="color:var(--accent-2);">One OpenFGA deployment, many applications</h3>
+        <ul style="color:var(--ink);">
+          <li>Each application (or environment) gets its own <span class="mono">store_id</span> — fully isolated data</li>
+          <li>Each store can run its own authorization model — apps don't share a model</li>
+          <li>A mobile app plugs in the same way: same OpenFGA API, its own store_id / model_id</li>
+          <li>Onboarding a new application needs zero changes to OpenFGA itself</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 FORESEEABLE CHANGES -->
+  <section class="slide" data-title="Future Foreseeable Changes" data-group="Operations & roadmap">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Operations &amp; roadmap</p>
+        <h1 class="slide-title">Future foreseeable changes — how we tackle them</h1>
+        <p class="slide-sub">Two kinds of change we expect, and the playbook for each.</p>
+      </div>
+      <div class="grid-2">
+        <div class="flow-col">
+          <span class="tag blue" style="align-self:flex-start; margin-bottom:8px;">Category A</span>
+          <div class="flow-box" style="background:var(--accent-2-soft); border-color:var(--accent-2);">
+            <h4 style="color:var(--accent-2);">New / changed data on an existing table</h4>
+            <p>client, project, structure, …</p>
+          </div>
+          <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
+          <div class="flow-box" style="background:var(--good-soft); border-color:var(--good);">
+            <h4 style="color:var(--good);">No authorization model change needed</h4>
+            <p>It's just a migration in the application DB where that data actually belongs. OpenFGA tuples/model stay untouched.</p>
+          </div>
+          <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
+          <div class="flow-box" style="background:var(--surface-2);">
+            <p>Very small changes? Just migrate the extra column into the same table — no bigger change required.</p>
+          </div>
+        </div>
+        <div class="flow-col">
+          <span class="tag blue" style="align-self:flex-start; margin-bottom:8px;">Category B</span>
+          <div class="flow-box" style="background:var(--accent-2-soft); border-color:var(--accent-2);">
+            <h4 style="color:var(--accent-2);">A new hierarchy or client joins us</h4>
+          </div>
+          <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
+          <div class="flow-fork">
+            <div class="flow-box" style="background:var(--leaf-soft); border-color:var(--leaf);">
+              <h4 style="color:var(--leaf);">1 — Same hierarchy shape</h4>
+              <p>Different naming, or a different number of nested zone levels.</p>
+              <p style="margin-top:6px; color:var(--leaf);">→ Reuse the existing OpenFGA store + model: add the new client/zones as new objects &amp; tuples.</p>
+            </div>
+            <div class="flow-box" style="background:var(--accent-soft); border-color:var(--accent);">
+              <h4 style="color:var(--accent);">2 — Genuinely new shape</h4>
+              <p>A business structure this model doesn't fit at all.</p>
+              <p style="margin-top:6px; color:var(--accent);">→ Design a new OpenFGA authorization model, its own store for that hierarchy type.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="note" style="margin-top:20px;">
+        <b style="color:var(--ink);">Audit &amp; logging safety net</b> — OpenFGA's own changelog + our <span class="mono">audit_events</span> table record every grant/revoke and every zone/structure change across all outcomes above, so we can always trace what changed, when, and why.
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 FUTURE PLANS -->
+  <section class="slide" data-title="Future Plans" data-group="Operations & roadmap">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Operations &amp; roadmap</p>
+        <h1 class="slide-title">Future plans</h1>
+        <p class="slide-sub">What we'll demo next, after this hierarchy + authorization PoC.</p>
+      </div>
+        <div class="big-step" style="background:var(--leaf-soft); border-color:var(--leaf);">
+          <span class="num" style="color:var(--leaf);">01</span>
+          <div>
+            <h3 style="color:var(--leaf);">Stress-test at scale</h3>
+            <p>Push the model past the happy path and put hard numbers behind it — latency, response size, and volume limits, not just correctness.</p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+              <span class="tag amber">Runtime permission writes</span>
+              <span class="tag amber">Multiple Project</span>
+              <span class="tag amber">Large-scale reverse resource lookup</span>
+              <span class="tag amber">High-volume authorization checks</span>
+              <span class="tag amber">Complex cross-resource relationships</span>
+            </div>
+          </div>
+        </div>
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div class="big-step" style="background:var(--accent-2-soft); border-color:var(--accent-2);">
+          <span class="num" style="color:var(--accent-2);">02</span>
+          <div>
+            <h3 style="color:var(--accent-2);">Integrate into datalake-api-core</h3>
+            <p>Port this OpenFGA ReBAC hierarchy + authorization pattern into datalake-api-core. Run it side-by-side with real data pulled from the Gold layer (not seeded demo data), to validate the model and the tree / per-structure checks against production-shaped data.</p>
+          </div>
+        </div>
+        <div class="big-step" style="background:var(--accent-soft); border-color:var(--accent);">
+          <span class="num" style="color:var(--accent);">03</span>
+          <div>
+            <h3 style="color:var(--accent);">API version control on datalake-api-core</h3>
+            <p>Introduce versioning on datalake-api-core's APIs (e.g. /v1, /v2) so the authorization model and hierarchy endpoints can evolve without breaking existing clients.</p>
+          </div>
+        </div>
+      </div>
+      <div class="footline" style="display:flex; align-items:center; gap:12px; margin-top:22px; flex-wrap:wrap;">
+        <span class="tag blue">Phase 1 · integration + Gold layer data</span>
+        <svg width="20" height="14" viewBox="0 0 20 14"><path d="M0 7h16M11 1l6 6-6 6" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
+        <span class="tag violet">Phase 2 · versioning</span>
+        <svg width="20" height="14" viewBox="0 0 20 14"><path d="M0 7h16M11 1l6 6-6 6" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
+        <span class="tag amber">Phase 3 · stress &amp; scale testing</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 INTEGRATION PATTERN -->
+  <section class="slide" data-title="Suggestion Required — How Should Services Call OpenFGA?" data-group="Operations & roadmap">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Operations &amp; roadmap</p>
+        <h1 class="slide-title">Suggestion required — how should services call OpenFGA?</h1>
+        <p class="slide-sub">Five integration shapes on the table, and which combination we'd recommend.</p>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="int-row" style="--stripe:var(--accent-2);">
+          <span class="int-num">1</span>
+          <div class="int-body"><h3>Separate service (centralized)</h3><p>One shared OpenFGA deployment (its own store per app) that every consuming service reaches over the network. This is what's already running today.</p></div>
+        </div>
+        <div class="int-row" style="--stripe:var(--bad);">
+          <span class="int-num">2</span>
+          <div class="int-body"><h3>Sidecar</h3><p>An OpenFGA process co-located with each app instance (e.g. same pod). Adds a deployment per instance and fights the "one store per app" model.</p></div>
+        </div>
+        <div class="int-row" style="--stripe:var(--border);">
+          <span class="int-num">3</span>
+          <div class="int-body"><h3>Inter-service call</h3><p>Any service reaches OpenFGA the same way it reaches another internal service. Not a distinct topology — it's option 1, described from the caller's side.</p></div>
+        </div>
+        <div class="int-row" style="--stripe:var(--accent);">
+          <span class="int-num">4</span>
+          <div class="int-body"><h3>Middleware</h3><p>The authorization check wired into each app's request pipeline (e.g. a FastAPI dependency), so routes never hand-roll checks. An app-side detail, not a topology.</p></div>
+        </div>
+        <div class="int-row" style="--stripe:var(--accent);">
+          <span class="int-num">5</span>
+          <div class="int-body"><h3>Embedded client (shared library)</h3><p>A thin SDK wrapper — like this PoC's <span class="mono">app/authorization/service.py</span> — that every service imports directly, instead of each team reinventing check/grant calls.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="navbar">
+  <button class="nav-btn" id="prevBtn" aria-label="Previous slide">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <span class="nav-count tabular" id="navCount">01 / 17</span>
+  <div class="nav-track"><div class="nav-fill" id="navFill"></div></div>
+  <button class="nav-outline-btn" id="outlineBtn">Outline</button>
+  <button class="nav-btn" id="nextBtn" aria-label="Next slide">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>
+  </button>
+</div>
+
+<div class="outline-overlay" id="outlineOverlay">
+  <div class="outline-panel" id="outlinePanel"></div>
+</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var navCount = document.getElementById('navCount');
+  var navFill = document.getElementById('navFill');
+  var sectionLabel = document.getElementById('sectionLabel');
+  var outlineBtn = document.getElementById('outlineBtn');
+  var outlineOverlay = document.getElementById('outlineOverlay');
+  var outlinePanel = document.getElementById('outlinePanel');
+
+  function pad(n){ return (n<10?'0':'')+n; }
+
+  function buildOutline(){
+    outlinePanel.innerHTML = '';
+    slides.forEach(function(s, i){
+      var btn = document.createElement('button');
+      btn.className = 'outline-item' + (i===idx ? ' current' : '');
+      var group = s.getAttribute('data-group') || '';
+      btn.innerHTML = '<b>'+pad(i)+'</b><span>'+s.getAttribute('data-title')+'</span>' + (group ? '<small>'+group+'</small>' : '');
+      btn.addEventListener('click', function(){ goTo(i); closeOutline(); });
+      outlinePanel.appendChild(btn);
+    });
+  }
+  function openOutline(){ buildOutline(); outlineOverlay.classList.add('open'); }
+  function closeOutline(){ outlineOverlay.classList.remove('open'); }
+
+  function render(){
+    slides.forEach(function(s,i){ s.classList.toggle('active', i===idx); if(i===idx){ s.scrollTop = 0; } });
+    navCount.textContent = pad(idx+1) + ' / ' + total;
+    navFill.style.width = (total<=1 ? 100 : (idx/(total-1))*100) + '%';
+    prevBtn.disabled = idx===0;
+    nextBtn.disabled = idx===total-1;
+    sectionLabel.textContent = slides[idx].getAttribute('data-group') || slides[idx].getAttribute('data-title');
+  }
+  function goTo(i){ idx = Math.max(0, Math.min(total-1, i)); render(); }
+  function next(){ goTo(idx+1); }
+  function prev(){ goTo(idx-1); }
+
+  prevBtn.addEventListener('click', prev);
+  nextBtn.addEventListener('click', next);
+  outlineBtn.addEventListener('click', function(){ outlineOverlay.classList.contains('open') ? closeOutline() : openOutline(); });
+  outlineOverlay.addEventListener('click', function(e){ if(e.target===outlineOverlay) closeOutline(); });
+
+  window.addEventListener('keydown', function(e){
+    if(outlineOverlay.classList.contains('open')){
+      if(e.key==='Escape') closeOutline();
+      return;
+    }
+    if(e.key==='ArrowRight' || e.key===' ' || e.key==='PageDown'){ e.preventDefault(); next(); }
+    else if(e.key==='ArrowLeft' || e.key==='PageUp'){ e.preventDefault(); prev(); }
+    else if(e.key==='Home'){ goTo(0); }
+    else if(e.key==='End'){ goTo(total-1); }
+    else if(e.key==='o' || e.key==='O' || e.key==='g' || e.key==='G'){ openOutline(); }
+  });
+
+  var touchStartX = null, touchStartY = null;
+  window.addEventListener('touchstart', function(e){ touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, {passive:true});
+  window.addEventListener('touchend', function(e){
+    if(touchStartX===null) return;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    var dy = e.changedTouches[0].clientY - touchStartY;
+    if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)*1.5){ dx<0 ? next() : prev(); }
+    touchStartX = null; touchStartY = null;
+  }, {passive:true});
+
+  try{
+    if(window.claude && window.claude.hot){
+      window.claude.hot.snapshot(function(){ return { idx: idx }; });
+      var boot = function(data){ if(data && typeof data.idx === 'number'){ idx = data.idx; } render(); };
+      window.claude.hot.ready ? window.claude.hot.ready(boot) : boot(window.claude.hot.data || {});
+    } else { render(); }
+  } catch(e){ render(); }
+})();
+</script>

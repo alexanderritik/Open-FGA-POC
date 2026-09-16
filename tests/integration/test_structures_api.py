@@ -20,6 +20,7 @@ from app.db.models.audit_event import AuditEvent
 from app.db.models.client import Client
 from app.db.models.project import Project
 from app.db.models.structure import Structure
+from app.db.models.zone import Zone
 from app.main import app
 
 
@@ -68,6 +69,7 @@ def zone_id(api_client, fga_cleanup):
         session.query(AuditEvent).filter(
             AuditEvent.resource_id.in_([project_id, client_id, zone_id_])
         ).delete(synchronize_session=False)
+        session.query(Zone).filter(Zone.id == zone_id_).delete(synchronize_session=False)
         session.query(Project).filter(Project.id == project_id).delete(synchronize_session=False)
         session.query(Client).filter(Client.id == client_id).delete(synchronize_session=False)
         session.commit()

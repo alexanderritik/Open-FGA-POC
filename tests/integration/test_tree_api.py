@@ -41,6 +41,7 @@ from app.db.models.audit_event import AuditEvent
 from app.db.models.client import Client
 from app.db.models.project import Project
 from app.db.models.structure import Structure
+from app.db.models.zone import Zone
 from app.main import app
 
 
@@ -162,6 +163,18 @@ async def hierarchy(api_client, fga_cleanup):
                 ]
             )
         ).delete(synchronize_session=False)
+        session.query(Zone).filter(
+            Zone.id.in_(
+                [
+                    ids["zone_north"],
+                    ids["zone_south"],
+                    ids["zone_western"],
+                    ids["zone_delhi"],
+                    ids["zone_central"],
+                    ids["zone_other"],
+                ]
+            )
+        ).delete(synchronize_session=False)
         session.query(Project).filter(Project.id.in_([ids["project_a"], ids["project_b"]])).delete(
             synchronize_session=False
         )
@@ -191,7 +204,7 @@ def node_ids_by_type(node: dict) -> dict[str, set[str]]:
 
     def walk(n: dict) -> None:
         result.setdefault(n["type"], set()).add(n["id"])
-        for child in n["children"]:
+        for child in n.get("children", []):
             walk(child)
 
     walk(node)

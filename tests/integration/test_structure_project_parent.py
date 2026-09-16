@@ -7,8 +7,9 @@ in the same system:
                                                      test_structures_api.py,
                                                      test_zone_api.py)
 
-No Zone is ever created or implied for the direct-parent case — there is
-still no zones table and no Zone model anywhere in this project.
+No Zone is ever created or implied for the direct-parent case — the
+`zones` table (app/db/models/zone.py) only mirrors a zone's name and is
+irrelevant here.
 """
 
 import uuid
@@ -25,6 +26,7 @@ from app.db.models.audit_event import AuditEvent
 from app.db.models.client import Client
 from app.db.models.project import Project
 from app.db.models.structure import Structure
+from app.db.models.zone import Zone
 from app.main import app
 
 
@@ -322,12 +324,13 @@ async def test_mixed_project_with_both_direct_structure_and_zone_branch(api_clie
 
     session = SessionLocal()
     try:
-        session.query(AuditEvent).filter(AuditEvent.resource_id.in_([direct_structure, zoned_structure])).delete(
-            synchronize_session=False
-        )
+        session.query(AuditEvent).filter(
+            AuditEvent.resource_id.in_([direct_structure, zoned_structure, zone_id])
+        ).delete(synchronize_session=False)
         session.query(Structure).filter(Structure.id.in_([direct_structure, zoned_structure])).delete(
             synchronize_session=False
         )
+        session.query(Zone).filter(Zone.id == zone_id).delete(synchronize_session=False)
         session.commit()
     finally:
         session.close()

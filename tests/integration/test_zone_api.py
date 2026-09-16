@@ -1,10 +1,13 @@
 """API-level tests for the recursive Zone endpoints.
 
-Zone has no table and no ORM model: every assertion here about hierarchy
-comes back through the API (which itself reads OpenFGA), never from a
-direct database query for zone data. A `Project` and `Client` row are
-created directly via the ORM only because Zone creation validates that a
-referenced parent project exists (no Project API exists yet).
+The hierarchy itself (existence, parent, cycle detection) has no ORM
+model: every assertion here about hierarchy comes back through the API
+(which itself reads OpenFGA), never from a direct database query. The
+`zones` table (app/db/models/zone.py) only mirrors `name`, so it is
+touched here just to clean up rows the API wrote. A `Project` and
+`Client` row are created directly via the ORM only because Zone creation
+validates that a referenced parent project exists (no Project API exists
+yet).
 """
 
 import uuid
@@ -20,6 +23,7 @@ from app.db.database import SessionLocal
 from app.db.models.audit_event import AuditEvent
 from app.db.models.client import Client
 from app.db.models.project import Project
+from app.db.models.zone import Zone
 from app.main import app
 
 
@@ -50,6 +54,8 @@ def project_id(fga_cleanup):
         session.query(AuditEvent).filter(
             AuditEvent.resource_id.in_([proj_id, client_id, *zone_audit_ids])
         ).delete(synchronize_session=False)
+        if zone_audit_ids:
+            session.query(Zone).filter(Zone.id.in_(zone_audit_ids)).delete(synchronize_session=False)
         session.query(Project).filter(Project.id == proj_id).delete(synchronize_session=False)
         session.query(Client).filter(Client.id == client_id).delete(synchronize_session=False)
         session.commit()
@@ -92,7 +98,7 @@ async def test_create_root_zone_under_project(api_client, project_id, fga_cleanu
     fga_cleanup.append((f"project:{project_id}", "parent", f"zone:{zone_id}"))
 
     assert response.status_code == 201
-    assert response.json() == {"id": zone_id, "parent_type": "project", "parent_id": project_id}
+    assert response.json() == {"id": zone_id, "name": None, "parent_type": "project", "parent_id": project_id}
 
 
 async def test_create_sibling_zones_under_same_project(api_client, project_id, fga_cleanup):
@@ -118,7 +124,7 @@ async def test_create_nested_zone_under_zone(api_client, project_id, fga_cleanup
     fga_cleanup.append((f"zone:{north}", "parent", f"zone:{delhi}"))
 
     assert response.status_code == 201
-    assert response.json() == {"id": delhi, "parent_type": "zone", "parent_id": north}
+    assert response.json() == {"id": delhi, "name": None, "parent_type": "zone", "parent_id": north}
 
     children = api_client.get(f"/zones/{north}/children").json()
     assert children["child_zones"] == [delhi]
@@ -151,9 +157,24 @@ async def test_deep_nesting_project_to_structure(api_client, project_id, fga_cle
     fga_cleanup.append((f"zone:{central}", "parent", f"structure:{structure_id}"))
     await fga_client.close()
 
-    assert api_client.get(f"/zones/{north}").json() == {"id": north, "parent_type": "project", "parent_id": project_id}
-    assert api_client.get(f"/zones/{delhi}").json() == {"id": delhi, "parent_type": "zone", "parent_id": north}
-    assert api_client.get(f"/zones/{central}").json() == {"id": central, "parent_type": "zone", "parent_id": delhi}
+    assert api_client.get(f"/zones/{north}").json() == {
+        "id": north,
+        "name": None,
+        "parent_type": "project",
+        "parent_id": project_id,
+    }
+    assert api_client.get(f"/zones/{delhi}").json() == {
+        "id": delhi,
+        "name": None,
+        "parent_type": "zone",
+        "parent_id": north,
+    }
+    assert api_client.get(f"/zones/{central}").json() == {
+        "id": central,
+        "name": None,
+        "parent_type": "zone",
+        "parent_id": delhi,
+    }
 
     central_children = api_client.get(f"/zones/{central}/children").json()
     assert central_children["child_zones"] == []

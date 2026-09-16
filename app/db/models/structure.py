@@ -9,11 +9,11 @@ from app.db.database import Base
 class Structure(Base):
     """Business record for a Structure.
 
-    Deliberately has NO foreign key to a Zone: Zone does not exist as a
-    database entity anywhere in this application. The structure's parent
-    Zone is recorded exclusively as an OpenFGA tuple
-    (`structure:<id>#parent@zone:<zone_id>`), written by the authorization
-    service at creation time.
+    Deliberately has NO foreign key to a Zone: the `zones` table (see
+    app/db/models/zone.py) is a metadata mirror, not the source of truth
+    for hierarchy. A structure's parent Zone is recorded exclusively as an
+    OpenFGA tuple (`structure:<id>#parent@zone:<zone_id>`), written by the
+    authorization service at creation time.
     """
 
     __tablename__ = "structures"
