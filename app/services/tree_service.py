@@ -106,6 +106,71 @@ async def _build_client_tree(db: Session, auth: AuthorizationService, client: Cl
     return ContainerNode(type="client", id=client.id, name=client.name, children=children)
 
 
+async def _build_structure_node_full(db: Session, structure_id: str) -> StructureNode:
+    structure = db.get(Structure, structure_id)
+    name = structure.name if structure is not None else None
+    return StructureNode(id=structure_id, name=name)
+
+
+async def _build_zone_node_full(db: Session, auth: AuthorizationService, zone_id: str) -> ContainerNode:
+    child_zone_refs = await auth.list_relationships(f"zone:{zone_id}", PARENT_RELATION, "zone")
+    child_structure_refs = await auth.list_relationships(f"zone:{zone_id}", PARENT_RELATION, "structure")
+
+    children: list[TreeNode] = []
+    for ref in sorted(child_zone_refs):
+        children.append(await _build_zone_node_full(db, auth, ref.split(":", 1)[1]))
+    for ref in sorted(child_structure_refs):
+        children.append(await _build_structure_node_full(db, ref.split(":", 1)[1]))
+
+    return ContainerNode(type="zone", id=zone_id, name=None, children=children)
+
+
+async def _build_project_node_full(db: Session, auth: AuthorizationService, project: Project) -> ContainerNode:
+    zone_refs = await auth.list_relationships(f"project:{project.id}", PARENT_RELATION, "zone")
+    direct_structure_refs = await auth.list_relationships(f"project:{project.id}", PARENT_RELATION, "structure")
+
+    children: list[TreeNode] = []
+    for ref in sorted(zone_refs):
+        children.append(await _build_zone_node_full(db, auth, ref.split(":", 1)[1]))
+    for ref in sorted(direct_structure_refs):
+        children.append(await _build_structure_node_full(db, ref.split(":", 1)[1]))
+
+    return ContainerNode(type="project", id=project.id, name=project.name, children=children)
+
+
+async def get_client_tree_full(db: Session, auth: AuthorizationService, client_id: str) -> TreeNode:
+    """Unpruned counterpart to get_client_tree: returns the entire hierarchy
+    under a client with no `viewer` checks at all. There is no per-user
+    argument because there is no per-user filtering — every project, zone,
+    and structure is included regardless of who could otherwise see it.
+
+    This intentionally bypasses this module's whole reason for existing
+    (see the module docstring), so it is audited under a distinct action
+    name (read_tree_full) and a fixed "system:unauthenticated" actor so it
+    is easy to find and to distinguish from real per-user tree.access
+    events."""
+    client = db.get(Client, client_id)
+    if client is None:
+        raise ResourceNotFoundError("client", client_id)
+
+    projects = db.query(Project).filter(Project.client_id == client.id).order_by(Project.created_at).all()
+    children: list[TreeNode] = [await _build_project_node_full(db, auth, project) for project in projects]
+
+    audit_service.record_event(
+        db,
+        event_type="tree.access",
+        actor="system:unauthenticated",
+        resource_type="client",
+        resource_id=client_id,
+        action="read_tree_full",
+        result="success",
+        event_metadata={"pruned": False},
+    )
+    db.commit()
+
+    return ContainerNode(type="client", id=client.id, name=client.name, children=children)
+
+
 async def get_client_tree(db: Session, auth: AuthorizationService, client_id: str, user: str) -> TreeNode:
     client = db.get(Client, client_id)
     if client is None:

@@ -1,0 +1,411 @@
+{
+  "info": {
+    "_postman_id": "7f9c12e4-887b-4b1e-a53d-2bc2f81a99d1",
+    "name": "OpenFGA ReBAC - OpenFGA API",
+    "description": "Requests against the OpenFGA authorization server itself (http://localhost:8080) for the OpenFGA ReBAC PoC — NOT the FastAPI app (which is the 'OpenFGA ReBAC New Architecture' collection).\n\nStore: openfga-rebac-poc (01M265KZ9C3WJEQCF2YP6F61Z0) — this is the same store id the running FastAPI app uses (see .env FGA_STORE_ID). Authorization model pins the hierarchy: client -> project -> zone(...) -> structure, every type's 'viewer' is '[user] or viewer from parent' (downward-only inheritance).\n\nVerified against openfga/openfga:v1.8 on 2026-09-21:\n- Tuple deletion happens through POST /write with a 'deletes' block (there is NO /store/{id}/delete endpoint in this build).\n- /batch-check requires correlation_id on each check and nests the tuple under 'tuple_key'.\n- /list-users uses 'user_filters' (plural) and takes 'relation' at the top level.\n- Not present in v1.8: /list-relations, /read-changes.\n- OpenFGA tuples are NOT idempotent at the engine level: writing a tuple that already exists (or deleting one that does not) returns HTTP 400 write_failed_due_to_invalid_input. The FastAPI app absorbs this by checking tuple_exists() before writing.\n- Writing an authorization model always creates a NEW immutable model version (the app pins one via FGA_MODEL_ID in .env).\n\nNo auth headers: this OpenFGA instance runs with the default no-authentication config.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "fgaUrl", "value": "http://localhost:8080" },
+    { "key": "storeId", "value": "01M265KZ9C3WJEQCF2YP6F61Z0" },
+    { "key": "modelId", "value": "01M27QFAQTNSSYX0N22TBPFFJK" },
+    { "key": "clientId", "value": "govt-of-india" },
+    { "key": "projectId", "value": "indian-railway" },
+    { "key": "zoneId", "value": "north" },
+    { "key": "structureId", "value": "yamuna-bridge" },
+    { "key": "userId", "value": "user:parth" }
+  ],
+  "item": [
+    {
+      "name": "01 - Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fgaUrl}}/healthz",
+              "host": ["{{fgaUrl}}"],
+              "path": ["healthz"]
+            }
+          },
+          "description": "Liveness probe. Returns {\"status\":\"SERVING\"}. The FastAPI app performs the same check with retry/backoff at startup and fails closed if OpenFGA is unreachable."
+        }
+      ]
+    },
+    {
+      "name": "02 - Stores",
+      "item": [
+        {
+          "name": "List stores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fgaUrl}}/stores",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores"]
+            }
+          },
+          "description": "All stores in this OpenFGA instance. This project uses one store, 'openfga-rebac-poc'."
+        },
+        {
+          "name": "Get store",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}"]
+            }
+          },
+          "description": "Store metadata for the project's store."
+        },
+        {
+          "name": "Create store (caution: new store, empty authorization data)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"my-new-store\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Creates a brand-new, empty store. The ReBAC hierarchy/model would then need bootstrapping (see scripts/bootstrap_openfga.py)."
+        },
+        {
+          "name": "Delete store (caution: DESTRUCTIVE)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}"]
+            }
+          },
+          "description": "Hard-deletes the store and ALL of its tuples and models. Irreversible. Never run this against the live store without a backup."
+        }
+      ]
+    },
+    {
+      "name": "03 - Authorization Models",
+      "item": [
+        {
+          "name": "List authorization models",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/authorization-models",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "authorization-models"]
+            }
+          },
+          "description": "All model versions, newest first. Models are immutable and versioned; each write appends a new version."
+        },
+        {
+          "name": "Get authorization model by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/authorization-models/{{modelId}}",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "authorization-models", "{{modelId}}"]
+            }
+          },
+          "description": "The exact model version pinned in .env (FGA_MODEL_ID): schema 1.1, types user/client/project/zone/structure. zone#parent and structure#parent both accept [project, zone], giving arbitrary nesting; every type's viewer is '[user] or viewer from parent'."
+        },
+        {
+          "name": "Write authorization model (caution: creates a NEW model version)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/authorization-models",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "authorization-models"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schema_version\": \"1.1\",\n  \"type_definitions\": [\n    { \"type\": \"user\", \"relations\": {} },\n    {\n      \"type\": \"client\",\n      \"relations\": { \"viewer\": { \"this\": {} } },\n      \"metadata\": {\n        \"relations\": { \"viewer\": { \"directly_related_user_types\": [{ \"type\": \"user\" }] } }\n      }\n    },\n    {\n      \"type\": \"project\",\n      \"relations\": {\n        \"parent\": { \"this\": {} },\n        \"viewer\": {\n          \"union\": {\n            \"child\": [\n              { \"this\": {} },\n              { \"tupleToUserset\": { \"tupleset\": { \"object\": \"\", \"relation\": \"parent\" }, \"computedUserset\": { \"object\": \"\", \"relation\": \"viewer\" } } }\n            ]\n          }\n        }\n      },\n      \"metadata\": {\n        \"relations\": {\n          \"parent\": { \"directly_related_user_types\": [{ \"type\": \"client\" }] },\n          \"viewer\": { \"directly_related_user_types\": [{ \"type\": \"user\" }] }\n        }\n      }\n    },\n    {\n      \"type\": \"zone\",\n      \"relations\": {\n        \"parent\": { \"this\": {} },\n        \"viewer\": {\n          \"union\": {\n            \"child\": [\n              { \"this\": {} },\n              { \"tupleToUserset\": { \"tupleset\": { \"object\": \"\", \"relation\": \"parent\" }, \"computedUserset\": { \"object\": \"\", \"relation\": \"viewer\" } } }\n            ]\n          }\n        }\n      },\n      \"metadata\": {\n        \"relations\": {\n          \"parent\": { \"directly_related_user_types\": [{ \"type\": \"project\" }, { \"type\": \"zone\" }] },\n          \"viewer\": { \"directly_related_user_types\": [{ \"type\": \"user\" }] }\n        }\n      }\n    },\n    {\n      \"type\": \"structure\",\n      \"relations\": {\n        \"parent\": { \"this\": {} },\n        \"viewer\": {\n          \"union\": {\n            \"child\": [\n              { \"this\": {} },\n              { \"tupleToUserset\": { \"tupleset\": { \"object\": \"\", \"relation\": \"parent\" }, \"computedUserset\": { \"object\": \"\", \"relation\": \"viewer\" } } }\n            ]\n          }\n        }\n      },\n      \"metadata\": {\n        \"relations\": {\n          \"parent\": { \"directly_related_user_types\": [{ \"type\": \"project\" }, { \"type\": \"zone\" }] },\n          \"viewer\": { \"directly_related_user_types\": [{ \"type\": \"user\" }] }\n        }\n      }\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Writes the project's authorization model (same shape as app/authorization/model.fga). Expect HTTP 201 with a new, immutable model id. CAUTION: a successful run creates another model version that existing tuples are still valid under, but the app stays pinned to FGA_MODEL_ID until .env is updated."
+        }
+      ]
+    },
+    {
+      "name": "04 - Tuples (Write / Read / Delete)",
+      "item": [
+        {
+          "name": "Read tuples for an object",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/read",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "read"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": {\n    \"object\": \"structure:{{structureId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "All tuples touching structure:yamuna-bridge: its direct 'parent' tuple (zone:central) and any direct viewer grants (user:deepa)."
+        },
+        {
+          "name": "Read tuples for a user, scoped by type",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/read",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "read"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": {\n    \"user\": \"user:deepa\",\n    \"relation\": \"viewer\",\n    \"object\": \"structure:\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Direct viewer tuples for user:deepa over structures. Note read requires the object type to be present and at least one of (object id, user) to be non-empty — there is no 'dump all tuples' filter."
+        },
+        {
+          "name": "Write viewer grant (example: parth -> client)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/write",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "write"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"{{userId}}\", \"relation\": \"viewer\", \"object\": \"client:{{clientId}}\" }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Writes client-level viewer for user:parth. On the live store this tuple already exists (seeded), so it returns HTTP 400 write_failed_due_to_invalid_input — OpenFGA tuples are NOT idempotent at the engine level; the FastAPI /authorization/grant endpoint checks tuple_exists() first to stay idempotent."
+        },
+        {
+          "name": "Write parent tuple (example: new zone under project)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/write",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "write"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writes\": {\n    \"tuple_keys\": [\n      { \"user\": \"project:{{projectId}}\", \"relation\": \"parent\", \"object\": \"zone:new-zone\" }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Parent tuples encode the entire hierarchy (zone:new-zone nested directly under project:indian-railway). Zones have no business row anywhere — this tuple IS the zone. Caution: creates an orphaned zone the app doesn't know about unless shared ids are kept consistent."
+        },
+        {
+          "name": "Delete viewer grant (caution: mutates; ghost tuple returns 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/write",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "write"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deletes\": {\n    \"tuple_keys\": [\n      { \"user\": \"user:ghost\", \"relation\": \"viewer\", \"object\": \"structure:{{structureId}}\" }\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Deletion is a 'deletes' block on POST /write (there is no separate /delete endpoint in v1.8). Deleting a non-existent tuple returns HTTP 400 write_failed_due_to_invalid_input — safe to run. To really revoke a real grant, swap the tuple to an existing one you intend to remove."
+        }
+      ]
+    },
+    {
+      "name": "05 - Checks & Queries",
+      "item": [
+        {
+          "name": "Check: user:parth viewer structure:yamuna-bridge (allowed)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/check",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "check"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": {\n    \"user\": \"{{userId}}\",\n    \"relation\": \"viewer\",\n    \"object\": \"structure:{{structureId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "client:govt-of-india grant inherits all the way down to the structure. Expect {\"allowed\":true}."
+        },
+        {
+          "name": "Check: user:nobody viewer structure:yamuna-bridge (denied)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/check",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "check"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": {\n    \"user\": \"user:nobody\",\n    \"relation\": \"viewer\",\n    \"object\": \"structure:{{structureId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Zero-grant user. Expect {\"allowed\":false}."
+        },
+        {
+          "name": "Check: user:carlos viewer zone:south (cross-branch denied)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/check",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "check"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": {\n    \"user\": \"user:carlos\",\n    \"relation\": \"viewer\",\n    \"object\": \"zone:south\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "carlos has zone-level access to north only — a sibling zone must NOT be reachable. Expect {\"allowed\":false}."
+        },
+        {
+          "name": "Check: user:argentina-admin viewer structure:yamuna-bridge (cross-client denied)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/check",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "check"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": {\n    \"user\": \"user:argentina-admin\",\n    \"relation\": \"viewer\",\n    \"object\": \"structure:{{structureId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "argentina-admin belongs to a different client entirely. Expect {\"allowed\":false} — no cross-client leakage."
+        },
+        {
+          "name": "Batch check: parth (true) + nobody (false)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/batch-check",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "batch-check"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checks\": [\n    { \"correlation_id\": \"chk-1\", \"tuple_key\": { \"user\": \"{{userId}}\", \"relation\": \"viewer\", \"object\": \"structure:{{structureId}}\" } },\n    { \"correlation_id\": \"chk-2\", \"tuple_key\": { \"user\": \"user:nobody\", \"relation\": \"viewer\", \"object\": \"structure:{{structureId}}\" } }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Each item needs a correlation_id (regex ^[\\w\\d-]{1,36}$) and the tuple nested under 'tuple_key'. Responds keyed by correlation_id: {chk-1: {allowed:true}, chk-2: {allowed:false}}."
+        },
+        {
+          "name": "Expand: zone:north#viewer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/expand",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "expand"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tuple_key\": {\n    \"relation\": \"viewer\",\n    \"object\": \"zone:{{zoneId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Shows how viewer resolves to user:carlos directly plus tupleToUserset through the parent relation (project:indian-railway#viewer inherited upward). This is the OpenFGA engine's explanation of the tree the FastAPI app renders."
+        },
+        {
+          "name": "List objects: carlos can view (structures)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/list-objects",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "list-objects"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"user:carlos\",\n  \"relation\": \"viewer\",\n  \"type\": \"structure\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Every structure carlos can view (North branch only): north-bridge, delhi-bridge, agra-bridge, yamuna-bridge."
+        },
+        {
+          "name": "List objects: etihad-admin can view (clients)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/list-objects",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "list-objects"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"user:etihad-admin\",\n  \"relation\": \"viewer\",\n  \"type\": \"client\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "Client-level admin: Expect client:emirates only."
+        },
+        {
+          "name": "List users: who can view structure:yamuna-bridge",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{fgaUrl}}/stores/{{storeId}}/list-users",
+              "host": ["{{fgaUrl}}"],
+              "path": ["stores", "{{storeId}}", "list-users"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": { \"type\": \"structure\", \"id\": \"{{structureId}}\" },\n  \"relation\": \"viewer\",\n  \"user_filters\": [ { \"type\": \"user\" } ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "description": "All effective users (direct + inherited): parth, alice, carlos, deepa. Relation is top-level (NOT inside 'object') and the filter field is plural 'user_filters' in this build."
+        }
+      ]
+    }
+  ]
+}

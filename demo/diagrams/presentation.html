@@ -155,6 +155,13 @@
   .card ul li{ margin-bottom:.15em; }
   .card p{ color:var(--ink-dim); font-size:.92rem; line-height:1.6; }
 
+  .point-list{ display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+  .point{ display:flex; align-items:flex-start; gap:11px; font-size:.92rem; line-height:1.45; color:var(--ink); }
+  .point .point-icon{ width:22px; height:22px; border-radius:999px; display:flex; align-items:center; justify-content:center; flex:none; margin-top:.05em; }
+  .point .point-icon svg{ width:12px; height:12px; }
+  .point.bad .point-icon{ background:var(--bad-soft); color:var(--bad); }
+  .point.good .point-icon{ background:var(--good-soft); color:var(--good); }
+
   .tag{
     display:inline-flex; align-items:center; font-family:var(--font-mono); font-size:.68rem;
     letter-spacing:.06em; text-transform:uppercase; padding:.28em .65em; border-radius:6px; font-weight:500;
@@ -258,6 +265,20 @@
   .flow-arrow{ color:var(--ink-faint); margin:2px 0; flex:none; }
   .flow-fork{ display:grid; grid-template-columns:1fr 1fr; gap:14px; width:100%; }
   @media (max-width:640px){ .flow-fork{ grid-template-columns:1fr; } }
+
+  .scenario-row{ display:flex; align-items:flex-start; gap:0; }
+  .scenario-row > .scenario-col{ flex:1; min-width:0; padding:0 20px; }
+  .scenario-row > .scenario-col:first-child{ padding-left:0; }
+  .scenario-row > .scenario-col:last-child{ padding-right:0; }
+  .scenario-row > .scenario-col + .scenario-col{ border-left:2px dashed var(--border); }
+  @media (max-width:860px){
+    .scenario-row{ flex-direction:column; }
+    .scenario-row > .scenario-col{ padding:0; }
+    .scenario-row > .scenario-col + .scenario-col{ border-left:none; border-top:2px dashed var(--border); padding-top:20px; margin-top:20px; }
+  }
+  .example-block{ border:1px dashed var(--border); border-radius:10px; padding:10px 14px; background:var(--surface); margin-top:10px; width:100%; }
+  .example-block .ex-label{ font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); margin-bottom:4px; display:block; }
+  .example-block p{ font-size:.8rem; color:var(--ink-dim); margin:0; line-height:1.5; }
 
   /* integration rows (15) */
   .int-row{
@@ -403,61 +424,70 @@
       <div class="slide-head">
         <p class="kicker">Foundations</p>
         <h1 class="slide-title">What is ReBAC, and why do we need it?</h1>
-        <p class="slide-sub">ReBAC (Relationship-Based Access Control): access is decided by the <em>relationship</em> between a user and a resource — not by a role name. e.g. "is this user a viewer of this zone, or of its parent project/client?"</p>
+        <p class="slide-sub">Access is decided by the <em>relationship</em> between a user and a resource — not by a role name.</p>
       </div>
       <div class="grid-2" style="align-items:stretch;">
         <div class="card">
           <span class="tag neutral">Traditional RBAC</span>
-          <ul style="margin-top:14px;">
-            <li>Permissions attach to a <b style="color:var(--ink)">role</b> (admin, editor, viewer)</li>
-            <li>A role is usually global, or per resource-type — not per single resource instance</li>
-            <li>Breaks down when one user needs different access to different individual resources</li>
-            <li>Breaks down when access should flow through a deep, changing hierarchy</li>
-          </ul>
+          <div class="point-list">
+            <div class="point bad">
+              <span class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+              <span>Role-based, not resource-based</span>
+            </div>
+            <div class="point bad">
+              <span class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+              <span>Same access for every instance</span>
+            </div>
+            <div class="point bad">
+              <span class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+              <span>Breaks on deep, changing hierarchies</span>
+            </div>
+          </div>
         </div>
         <div class="card" style="border-color:var(--good); background:var(--good-soft);">
           <span class="tag good">ReBAC (OpenFGA)</span>
-          <ul style="margin-top:14px; color:var(--ink);">
-            <li>A permission <b>is</b> a relationship tuple: <span class="mono">(user, relation, object)</span></li>
-            <li>A grant is scoped to one specific resource instance (this zone, this client) — not a role name</li>
-            <li>Inheritance follows the real hierarchy: grant once at a client/project/zone and it flows down automatically</li>
-          </ul>
+          <div class="point-list">
+            <div class="point good">
+              <span class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span>
+              <span>Permission = tuple: <span class="mono">(user, relation, object)</span></span>
+            </div>
+            <div class="point good">
+              <span class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span>
+              <span>Scoped to one exact resource</span>
+            </div>
+            <div class="point good">
+              <span class="point-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></span>
+              <span>Inherits automatically down the tree</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="note" style="margin-top:20px; background:var(--leaf-soft); border-style:solid; border-color:var(--leaf);">
-        <b style="color:var(--leaf); text-transform:uppercase; font-family:var(--font-mono); font-size:.72rem; letter-spacing:.06em;">Choose ReBAC over plain RBAC when —</b>
-        <ul style="margin-top:10px; color:var(--ink);">
-          <li>Sharing must be fine-grained and resource-specific ("this exact zone", not "all zones")</li>
-          <li>Permissions must flow through a deep, possibly-changing hierarchy (client → project → zone → zone → structure)</li>
-          <li>A fixed set of roles can't express it without exploding into hundreds of one-off roles</li>
-        </ul>
+      <div style="margin-top:22px;">
+        <p class="kicker" style="margin-bottom:.6rem;">Choose ReBAC when</p>
+        <div class="agenda" style="margin-top:0;">
+          <span class="chip"><b>1</b> Fine-grained, per-resource sharing</span>
+          <span class="chip"><b>2</b> Access flows through a deep hierarchy</span>
+          <span class="chip"><b>3</b> Fixed roles would explode into hundreds</span>
+        </div>
       </div>
-      <p class="footline">This PoC's proof: a single grant at <b>client:govt-of-india#viewer</b> automatically reaches every zone, nested zone, and structure beneath it — no per-resource role, and no code change when the hierarchy grows.</p>
+      <p class="footline">Proof: one grant at <b class="mono">client:govt-of-india#viewer</b> reaches every zone &amp; structure beneath it — no code change as the hierarchy grows.</p>
     </div>
   </section>
 
   <!-- 2 DIVIDER: GOLD LAYER -->
-  <section class="slide divider" data-title="Gold Layer Database" data-group="Foundations">
+  <!-- 3 ARCHITECTURE (incl. Gold Layer) -->
+  <section class="slide" data-title="Architecture & Database Schema" data-group="Foundations">
     <div class="slide-inner">
-      <div class="divider-index">§ Foundations</div>
-      <h1>Architected commercial business hierarchy<br>— Gold Layer Database</h1>
-      <p class="slide-sub">Clients → Projects → Structures</p>
-      <div class="rule"></div>
-    </div>
-  </section>
-
-  <!-- 3 ARCHITECTURE -->
-  <section class="slide" data-title="Architecture" data-group="Foundations">
-    <div class="slide-inner">
-      <div class="slide-head">
+      <div class="slide-head" style="margin-bottom:.6rem;">
         <p class="kicker">Foundations</p>
-        <h1 class="slide-title">OpenFGA ReBAC PoC — Architecture</h1>
-        <p class="slide-sub">One app, two stores: business data stays in Postgres, authorization decisions live entirely in OpenFGA.</p>
+        <h1 class="slide-title">Architecture &amp; database schema</h1>
+        <p class="slide-sub">One app, two stores: business data stays in Postgres, authorization decisions live entirely in OpenFGA. Only <span class="mono">clients → projects</span> is a real foreign key — everything below a project is shape known only to OpenFGA.</p>
       </div>
+      <p class="kicker" style="margin-top:.2rem;">Two data stores</p>
       <figure>
         <svg viewBox="0 0 940 600" width="100%" role="img" aria-label="Postman calls the FastAPI app, which reads and writes business data in the Gold Layer database and calls OpenFGA for check, grant and tree operations; OpenFGA stores tuples in its own internal PostgreSQL that the app never accesses directly.">
           <defs>
-            <marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor"/></marker>
+            <marker id="a1" markerWidth="9" markerHeight="3" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor"/></marker>
           </defs>
           <g fill="none" stroke="currentColor" stroke-width="1.6" color="var(--ink-faint)">
             <line x1="220" y1="220" x2="356" y2="220" marker-end="url(#a1)"/>
@@ -496,17 +526,8 @@
         </svg>
         <figcaption>Two data stores, one caller: the app never reaches OpenFGA's internal Postgres, and OpenFGA never sees business fields.</figcaption>
       </figure>
-    </div>
-  </section>
 
-  <!-- 4 DATABASE SCHEMA -->
-  <section class="slide" data-title="Database tables + relations" data-group="Foundations">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <p class="kicker">Foundations</p>
-        <h1 class="slide-title">Database tables + relations</h1>
-        <p class="slide-sub">Only <span class="mono">clients → projects</span> is a real foreign key. Everything below a project is shape known only to OpenFGA.</p>
-      </div>
+      <p class="kicker" style="margin-top:1.4rem;">Database tables + relations</p>
       <figure>
         <svg viewBox="0 0 1220 500" width="100%" role="img" aria-label="clients links to projects by a real foreign key; projects links to zones and to structures by OpenFGA tuples only, and zones link to structures and to other zones the same way, with no foreign key.">
           <defs>
@@ -560,15 +581,6 @@
           <text x="948" y="152" font-size="11.5" class="mono-t" fill="var(--ink-dim)">action, result, metadata</text>
           <text x="948" y="170" font-size="11.5" class="mono-t" fill="var(--ink-dim)">created_at</text>
 
-          <!-- users -->
-          <rect x="40" y="300" width="230" height="110" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.8"/>
-          <text x="58" y="326" font-size="14" font-weight="600" fill="var(--accent)">users</text>
-          <text x="58" y="348" font-size="11.5" class="mono-t" fill="var(--ink-dim)">id (PK)</text>
-          <text x="58" y="366" font-size="11.5" class="mono-t" fill="var(--ink-dim)">name</text>
-          <text x="58" y="384" font-size="11.5" class="mono-t" fill="var(--ink-dim)">created_at</text>
-          <text x="58" y="432" font-size="10.5" fill="var(--ink-faint)">referenced as user:&lt;id&gt; in OpenFGA</text>
-          <text x="58" y="447" font-size="10.5" fill="var(--ink-faint)">— no FK to any table</text>
-
           <!-- zones -->
           <rect x="330" y="300" width="250" height="110" rx="10" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="1.8"/>
           <text x="348" y="326" font-size="14" font-weight="600" fill="var(--accent-2)">zones</text>
@@ -587,44 +599,103 @@
   </section>
 
   <!-- 5 OPENFGA ROLE -->
-  <section class="slide" data-title="OpenFGA = Authorization Source of Truth" data-group="Foundations">
+  <!-- 5b AUTHENTICATION -> AUTHORIZATION LIFECYCLE -->
+  <section class="slide" data-title="Authentication → Authorization — How a Request Reaches OpenFGA" data-group="Foundations">
     <div class="slide-inner">
-      <div class="slide-head">
-        <p class="kicker">Foundations</p>
-        <h1 class="slide-title">OpenFGA = authorization source of truth</h1>
-        <p class="slide-sub">A clean split: OpenFGA knows the shape of "who can see what." Postgres knows everything else.</p>
+      <div class="slide-head" style="margin-bottom:.9rem;">
+        <p class="kicker">Foundations · Request lifecycle</p>
+        <h1 class="slide-title">Authentication → authorization — how a request reaches OpenFGA</h1>
+        <p class="slide-sub">Two separate concerns, two separate systems: Keycloak proves who's calling; OpenFGA decides what they're allowed to see.</p>
       </div>
-      <div class="grid-2">
-        <div class="card" style="background:var(--good-soft); border-color:var(--good);">
-          <span class="tag good">OpenFGA stores</span>
-          <ul style="margin-top:14px; color:var(--ink);">
-            <li>Relationship tuples — <span class="mono">(user, relation, object)</span></li>
-            <li>The authorization model (types + relations, e.g. <span class="mono">model.fga</span>)</li>
-          </ul>
-        </div>
-        <div class="card" style="background:var(--bad-soft); border-color:var(--bad);">
-          <span class="tag bad">OpenFGA does NOT store</span>
-          <ul style="margin-top:14px; color:var(--ink);">
-            <li>Names or any business fields</li>
-            <li>PII</li>
-            <li>Anything from the schema page — that all lives in Postgres</li>
-          </ul>
-        </div>
-      </div>
-      <div class="note" style="margin-top:20px; display:flex; align-items:center; gap:16px;">
-        <div class="icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" color="var(--ink-dim)"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M8 8h8M8 16h5"/></svg></div>
-        <span>Reference: OpenFGA's own architecture diagram at <span class="mono">openfga.dev</span> is a good companion visual to drop in alongside this split.</span>
+      <figure>
+        <svg viewBox="0 0 1160 800" width="100%" role="img" aria-label="Browser or Postman authenticates through Keycloak SSO to obtain a JWT; the App verifies that JWT locally, then calls OpenFGA to authorize the request using the verified user identity.">
+          <defs>
+            <marker id="seqArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor"/></marker>
+          </defs>
+
+          <rect x="20" y="86" width="820" height="320" rx="12" fill="var(--accent-2-soft)" opacity=".55"/>
+          <text x="40" y="112" font-size="12" font-weight="600" fill="var(--accent-2)" letter-spacing=".02em">AUTHENTICATION — SSO LOGIN (KEYCLOAK)</text>
+
+          <rect x="340" y="466" width="800" height="270" rx="12" fill="var(--accent-soft)" opacity=".6"/>
+          <text x="360" y="492" font-size="12" font-weight="600" fill="var(--accent)" letter-spacing=".02em">AUTHORIZATION — OPENFGA</text>
+
+          <!-- lifelines -->
+          <line x1="110" y1="66" x2="110" y2="750" stroke="var(--border)" stroke-width="2"/>
+          <line x1="430" y1="66" x2="430" y2="750" stroke="var(--border)" stroke-width="2"/>
+          <line x1="750" y1="66" x2="750" y2="750" stroke="var(--border)" stroke-width="2"/>
+          <line x1="1050" y1="66" x2="1050" y2="750" stroke="var(--border)" stroke-width="2"/>
+
+          <!-- lane headers -->
+          <rect x="20" y="20" width="180" height="42" rx="9" fill="var(--surface)" stroke="var(--ink-faint)" stroke-width="1.6"/>
+          <text x="110" y="46" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--ink)">Browser / Postman</text>
+
+          <rect x="340" y="20" width="180" height="42" rx="9" fill="var(--surface)" stroke="var(--ink-faint)" stroke-width="1.6"/>
+          <text x="430" y="46" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--ink)">App (FastAPI)</text>
+
+          <rect x="660" y="20" width="180" height="42" rx="9" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="750" y="46" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent-2)">Keycloak (SSO)</text>
+
+          <rect x="960" y="20" width="180" height="42" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="1050" y="46" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent)">OpenFGA</text>
+
+          <!-- row 1: browser -> app -->
+          <line x1="110" y1="150" x2="422" y2="150" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="120" y="138" font-size="12.5" font-weight="700" fill="var(--good)">GET</text>
+          <text x="152" y="138" font-size="12.5" fill="var(--ink)">/clients/govt-of-india/tree (no token yet)</text>
+
+          <!-- row 2: browser -> keycloak, passing through app -->
+          <line x1="430" y1="205" x2="430" y2="215" stroke="var(--ink-faint)" stroke-width="2" stroke-dasharray="3 4"/>
+          <line x1="110" y1="215" x2="742" y2="215" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="120" y="203" font-size="12.5" font-weight="700" fill="var(--good)">GET</text>
+          <text x="152" y="203" font-size="12.5" fill="var(--ink)">OAuth / OIDC login dialog (SSO redirect)</text>
+
+          <!-- row 3: keycloak -> browser -->
+          <line x1="750" y1="280" x2="118" y2="280" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="430" y="268" text-anchor="middle" font-size="12.5" fill="var(--ink)">302 Redirect — id_token / access_token (JWT)</text>
+
+          <!-- self loop: JWT verification on App -->
+          <path d="M430,340 C 520,340 520,388 430,388" fill="none" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="536" y="352" font-size="12.5" fill="var(--accent-2)" font-weight="600">Verify JWT locally</text>
+          <text x="536" y="370" font-size="11.5" fill="var(--ink-dim)">signature via Keycloak JWKS,</text>
+          <text x="536" y="386" font-size="11.5" fill="var(--ink-dim)">issuer, audience, expiry</text>
+
+          <!-- row 4: browser -> app, authenticated -->
+          <line x1="110" y1="440" x2="422" y2="440" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="120" y="428" font-size="12.5" font-weight="700" fill="var(--good)">GET</text>
+          <text x="152" y="428" font-size="12.5" fill="var(--ink)">/clients/govt-of-india/tree</text>
+          <text x="120" y="454" font-size="11.5" fill="var(--ink-faint)">Authorization: Bearer &lt;JWT&gt;</text>
+
+          <!-- row 5: app -> openfga -->
+          <line x1="430" y1="520" x2="1042" y2="520" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="440" y="508" font-size="12.5" font-weight="700" fill="var(--good)">POST</text>
+          <text x="480" y="508" font-size="12.5" fill="var(--ink)">/check</text>
+          <text x="440" y="534" font-size="11.5" fill="var(--ink-faint)">tuple_key: &#123; user: user:john (from JWT "sub"), relation: viewer, object: … &#125;</text>
+
+          <!-- row 6: openfga -> app -->
+          <line x1="1050" y1="590" x2="438" y2="590" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="750" y="578" text-anchor="middle" font-size="12.5" fill="var(--ink)">API response — &#123; "allowed": true &#125;</text>
+
+          <!-- row 7: app -> browser -->
+          <line x1="430" y1="660" x2="118" y2="660" stroke="currentColor" stroke-width="2" marker-end="url(#seqArrow)"/>
+          <text x="270" y="648" text-anchor="middle" font-size="12.5" fill="var(--ink)">200 OK — pruned tree / resource data</text>
+        </svg>
+        <figcaption>Keycloak answers "who is calling"; OpenFGA answers "what can they see" — the JWT's verified <span class="mono">sub</span> claim is what becomes <span class="mono">user:john</span> in every check from here on.</figcaption>
+      </figure>
+      <div class="legend-row">
+        <div class="item"><span class="swatch" style="background:var(--accent-2)"></span> Authentication — pluggable identity provider (Keycloak shown; Microsoft Entra ID or another OIDC provider swaps in the same way)</div>
+        <div class="item"><span class="swatch" style="background:var(--accent)"></span> Authorization — OpenFGA, unchanged regardless of identity provider</div>
       </div>
     </div>
   </section>
 
-  <!-- 6 INDIA HIERARCHY -->
-  <section class="slide" data-title="India Scenario — Business Hierarchy" data-group="Live walkthrough">
+  <!-- 6 INDIA HIERARCHY + SECURITY TESTS -->
+  <section class="slide" data-title="India Scenario — Hierarchy & Security Baseline" data-group="Live walkthrough">
     <div class="slide-inner">
       <div class="slide-head">
-        <p class="kicker">Live walkthrough</p>
-        <h1 class="slide-title">India scenario — business hierarchy</h1>
+        <p class="kicker">Live walkthrough · Security tests</p>
+        <h1 class="slide-title">India scenario — hierarchy &amp; security baseline</h1>
         <p class="slide-sub mono">client → project → zone → structure</p>
+        <p class="slide-sub" style="margin-top:.3rem;"><span class="mono">user:john</span> has zero OpenFGA tuples anywhere in this hierarchy — the baseline before any grant.</p>
       </div>
       <figure>
         <svg viewBox="0 0 1120 520" width="100%" role="img" aria-label="Govt of India client contains the Indian Railway project, which fans out to zones North, South and Western; North contains a nested Delhi zone with two structures, South and Western each contain one structure.">
@@ -689,27 +760,9 @@
         <div class="item"><span class="swatch" style="background:var(--accent-2)"></span> org unit — client / project / zone</div>
         <div class="item"><span class="swatch" style="background:var(--leaf)"></span> structure — leaf resource</div>
       </div>
-    </div>
-  </section>
 
-  <!-- 7 DIVIDER: SECURITY TESTS -->
-  <section class="slide divider" data-title="Security Tests" data-group="Live walkthrough">
-    <div class="slide-inner">
-      <div class="divider-index">§ Live walkthrough</div>
-      <h1>Security tests</h1>
-      <p class="slide-sub mono">Postman · 09 — Security Tests</p>
-      <div class="rule"></div>
-    </div>
-  </section>
-
-  <!-- 8 JOHN NO ACCESS -->
-  <section class="slide" data-title="John as a User — No Access" data-group="Live walkthrough">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <p class="kicker">Live walkthrough</p>
-        <h1 class="slide-title">John as a user — no access</h1>
-        <p class="slide-sub"><span class="mono">user:john</span> has zero OpenFGA tuples anywhere in the India hierarchy.</p>
-      </div>
+      <p class="kicker" style="margin-top:1.4rem;">Security test — John as a user, no access</p>
+      <p class="slide-sub mono" style="margin-top:-.4rem; margin-bottom:.6rem; font-size:.82rem;">Postman · 09 — Security Tests</p>
       <div class="rr-wrap">
         <div class="user-card">
           <div class="who">user:john</div>
@@ -751,23 +804,14 @@
     </div>
   </section>
 
-  <!-- 9 DIVIDER: GRANT CLIENT LEVEL -->
-  <section class="slide divider" data-title="Grant: Client-Level Viewer Access" data-group="Live walkthrough">
+  <!-- 9 GRANT JOHN ZONE NORTH (incl. Grant: Client-Level Viewer Access) -->
+  <section class="slide" data-title="Grant: Zone-Level Access to North, Verified" data-group="Live walkthrough">
     <div class="slide-inner">
-      <div class="divider-index">§ Live walkthrough</div>
-      <h1>Grant: client-level viewer access</h1>
-      <p class="slide-sub mono">POST /authorization/grant · Postman: 06 — Authorization</p>
-      <div class="rule"></div>
-    </div>
-  </section>
-
-  <!-- 10 GRANT JOHN ZONE NORTH -->
-  <section class="slide" data-title="Authorization Grant — Zone-Level Access to North" data-group="Live walkthrough">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <p class="kicker">Live walkthrough</p>
-        <h1 class="slide-title">Authorization grant — zone-level access to North</h1>
+      <div class="slide-head" style="margin-bottom:.9rem;">
+        <p class="kicker">Live walkthrough · Grant + verify</p>
+        <h1 class="slide-title">Grant zone-level access to North — then verify it</h1>
         <p class="slide-sub mono">POST /authorization/grant &#123; user: user:john, resource_type: zone, resource_id: north, permission: viewer &#125;</p>
+        <p class="slide-sub mono" style="margin-top:.3rem; font-size:.82rem;">Postman · 06 — Authorization</p>
       </div>
       <figure>
         <svg viewBox="0 0 1280 560" width="100%" role="img" aria-label="user:john is granted viewer on Zone North; North, its nested Delhi zone, and their two structures fall inside the inherited-access boundary, while South and Western remain outside it.">
@@ -838,145 +882,129 @@
         </svg>
       </figure>
       <p class="footline">Delhi + Yamuna Bridge + Agra Bridge inherit access from North. South / Western are untouched.</p>
-    </div>
-  </section>
 
-  <!-- 11 CHECKS AFTER GRANT -->
-  <section class="slide" data-title="Authorization Checks — After the Grant" data-group="Live walkthrough">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <p class="kicker">Live walkthrough</p>
-        <h1 class="slide-title">Authorization checks — after the grant</h1>
-        <p class="slide-sub"><span class="mono">user:john</span> now has zone-level viewer access to North.</p>
-      </div>
-      <div class="rr-wrap">
-        <div class="user-card">
-          <div class="who">user:john</div>
-          <div class="sub">zone:north viewer</div>
-        </div>
-        <div class="rr-stack">
-          <div class="rr-card">
-            <div class="rr-head">
-              <h3>Per-structure check</h3>
-              <span class="endpoint"><span class="verb">GET</span>/authorization/check</span>
-            </div>
-            <div class="rr-body">
-              <div class="kv"><span class="k">user</span><span class="v">user:john</span></div>
-              <div class="kv"><span class="k">relation</span><span class="v">viewer</span></div>
-              <div class="kv"><span class="k">object</span><span class="v">structure:yamuna-bridge</span></div>
-              <span>inherits: north → delhi → yamuna-bridge</span>
-            </div>
-            <div class="rr-result allow">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
-              {"allowed": true}
-            </div>
+      <p class="kicker" style="margin-top:1.4rem;">Now verify it</p>
+      <div class="grid-2">
+        <div class="rr-card">
+          <div class="rr-head">
+            <h3>Per-structure check</h3>
+            <span class="endpoint"><span class="verb">GET</span>/authorization/check</span>
           </div>
-          <div class="rr-card">
-            <div class="rr-head">
-              <h3>Tree check</h3>
-              <span class="endpoint"><span class="verb">GET</span>/clients/govt-of-india/tree</span>
-            </div>
-            <div class="rr-body">
-              <span>govt-of-india → indian-railway (pass-through) → north → delhi → yamuna-bridge, agra-bridge</span>
-              <span>south / western / kerala / goa: pruned (not visible)</span>
-            </div>
-            <div class="rr-result allow">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
-              200 OK — pruned tree returned
-            </div>
+          <div class="rr-body">
+            <div class="kv"><span class="k">user</span><span class="v">user:john</span></div>
+            <div class="kv"><span class="k">relation</span><span class="v">viewer</span></div>
+            <div class="kv"><span class="k">object</span><span class="v">structure:yamuna-bridge</span></div>
+            <span>inherits: north → delhi → yamuna-bridge</span>
+          </div>
+          <div class="rr-result allow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
+            {"allowed": true}
+          </div>
+        </div>
+        <div class="rr-card">
+          <div class="rr-head">
+            <h3>Tree check</h3>
+            <span class="endpoint"><span class="verb">GET</span>/clients/govt-of-india/tree</span>
+          </div>
+          <div class="rr-body">
+            <span>govt-of-india → indian-railway (pass-through) → north → delhi → yamuna-bridge, agra-bridge</span>
+            <span>south / western / kerala / goa: pruned (not visible)</span>
+          </div>
+          <div class="rr-result allow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg>
+            200 OK — pruned tree returned
           </div>
         </div>
       </div>
-      <p class="footline">Both checks allow — demo live in Postman next.</p>
-    </div>
-  </section>
-
-  <!-- 12 CORE APIS -->
-  <section class="slide" data-title="Core APIs used in the demo" data-group="Live walkthrough">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <p class="kicker">Live walkthrough</p>
-        <h1 class="slide-title">Core APIs used in the demo</h1>
-        <p class="slide-sub">Only the endpoints the demo narrative actually uses — not the full API surface. Screenshots 06–12 show these exact calls running.</p>
-      </div>
-      <div class="pipeline">
-        <div class="stage">
-          <div class="stage-num">01</div>
-          <div class="stage-title">Gold Layer from commercial hierarchy</div>
-          <div class="mini-card" style="flex:1;">
-            <p>Client → Project → Structures seeded directly into Postgres.</p>
-            <p class="evidence" style="margin-top:10px;">Evidence: 06 (clients list), 07 (projects list)</p>
-          </div>
-          <div class="chevron"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
-        </div>
-        <div class="stage">
-          <div class="stage-num">02</div>
-          <div class="stage-title">Build hierarchy</div>
-          <div class="mini-card ep"><span class="endpoint"><span class="verb">POST</span>/zones</span><p style="margin-top:8px;">Recursive: parent = project or another zone — OpenFGA only.</p></div>
-          <div class="mini-card ep"><span class="endpoint"><span class="verb">POST</span>/structures</span><p style="margin-top:8px;">Leaf resource: parent = a project or a zone.</p></div>
-          <p class="evidence">Evidence: 08 (zone endpoints folder)</p>
-          <div class="chevron"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
-        </div>
-        <div class="stage">
-          <div class="stage-num">03</div>
-          <div class="stage-title">Build authorize grant</div>
-          <div class="mini-card" style="flex:1;">
-            <span class="endpoint"><span class="verb">POST</span>/authorization/grant</span>
-            <p style="margin-top:8px;">Grant a user viewer access at any level of the hierarchy.</p>
-          </div>
-          <div class="chevron"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
-        </div>
-        <div class="stage">
-          <div class="stage-num">04</div>
-          <div class="stage-title">Authorization checks</div>
-          <div class="mini-card ep"><span class="endpoint"><span class="verb">GET</span>/authorization/check</span><p style="margin-top:8px;">Is this user allowed to view this resource?</p><p class="evidence" style="margin-top:8px;">Evidence: 09 (grant), 10 (check → allowed: true)</p></div>
-          <div class="mini-card ep"><span class="endpoint"><span class="verb">GET</span>/clients/&#123;id&#125;/tree</span><p style="margin-top:8px;">Full hierarchy, pruned to exactly what this user can see — this is the payoff.</p><p class="evidence" style="margin-top:8px;">Evidence: 11 (pruned tree response)</p></div>
-        </div>
-      </div>
-      <div class="note" style="margin-top:20px; background:var(--accent-soft); border-style:solid; border-color:var(--accent); color:var(--ink);">
-        <b style="color:var(--accent); font-family:var(--font-mono); text-transform:uppercase; font-size:.72rem; letter-spacing:.06em;">Bonus</b> — 09: Security Tests (screenshot 12): cross-client denial, cross-branch denial, no upward inheritance, zero-grant denial, anti-enumeration. Not needed to tell the core story, but proves it's not just a demo-happy-path.
-      </div>
+      <p class="footline">Both checks allow, same user, only the tuple changed — demo live in Postman next.</p>
     </div>
   </section>
 
   <!-- 13 AUDIT AND LOGGING -->
-  <section class="slide" data-title="Audit & Logging with OpenFGA" data-group="Operations & roadmap">
+  <section class="slide" data-title="Every Change Traced, Every App Isolated" data-group="Operations & roadmap">
     <div class="slide-inner">
-      <div class="slide-head">
+      <div class="slide-head" style="margin-bottom:1rem;">
         <p class="kicker">Operations &amp; roadmap</p>
-        <h1 class="slide-title">Audit &amp; logging with OpenFGA</h1>
-        <p class="slide-sub">Two separate logs answer two separate questions — and the same OpenFGA deployment scales to many applications.</p>
+        <h1 class="slide-title">Every change traced, every app isolated</h1>
+        <p class="slide-sub">One event writes to two logs that answer two different questions — and one OpenFGA deployment keeps every application's data and model separate.</p>
       </div>
-      <div class="two-col-cards">
-        <div class="card" style="background:var(--good-soft); border-color:var(--good);">
-          <h3 style="color:var(--good);">Application <span class="mono">audit_events</span> (Postgres)</h3>
-          <ul style="color:var(--ink);">
-            <li><span class="mono">action</span> — e.g. create, grant</li>
-            <li><span class="mono">result</span> — success, denied</li>
-            <li><span class="mono">metadata</span> — free-form context</li>
-            <li><span class="mono">created_at</span> — when it happened</li>
-          </ul>
-          <div class="answer-line">Answers: <b>which user did what, and did it succeed?</b></div>
+
+      <figure>
+        <svg viewBox="0 0 1160 400" width="100%" role="img" aria-label="A grant or revoke event writes into two separate logs: our audit_events table in Postgres, which answers who did what and whether it succeeded, and OpenFGA's own changelog table, which answers exactly when a permission tuple was granted or revoked.">
+          <defs>
+            <marker id="logArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor"/></marker>
+          </defs>
+          <rect x="450" y="16" width="260" height="52" rx="10" fill="var(--surface)" stroke="var(--ink-faint)" stroke-width="1.6"/>
+          <text x="580" y="47" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--ink)">Grant / revoke event</text>
+
+          <g fill="none" stroke="currentColor" stroke-width="1.8" color="var(--ink-faint)">
+            <path d="M500,68 C 420,110 300,110 260,150" marker-end="url(#logArrow)"/>
+            <path d="M660,68 C 740,110 860,110 900,150" marker-end="url(#logArrow)"/>
+          </g>
+
+          <rect x="40" y="150" width="480" height="230" rx="12" fill="var(--good-soft)" stroke="var(--good)" stroke-width="2"/>
+          <text x="64" y="180" font-size="15" font-weight="600" fill="var(--good)">Application audit_events (Postgres)</text>
+          <text x="64" y="206" font-size="12" class="mono-t" fill="var(--ink)">action — e.g. create, grant</text>
+          <text x="64" y="226" font-size="12" class="mono-t" fill="var(--ink)">result — success, denied</text>
+          <text x="64" y="246" font-size="12" class="mono-t" fill="var(--ink)">metadata — free-form context</text>
+          <text x="64" y="266" font-size="12" class="mono-t" fill="var(--ink)">created_at — when it happened</text>
+          <rect x="40" y="322" width="480" height="58" rx="0" fill="var(--good)" opacity=".14"/>
+          <text x="64" y="346" font-size="12" fill="var(--good)" font-weight="700">ANSWERS</text>
+          <text x="64" y="365" font-size="12.5" fill="var(--ink)">Which user did what, and did it succeed?</text>
+
+          <rect x="640" y="150" width="480" height="230" rx="12" fill="var(--leaf-soft)" stroke="var(--leaf)" stroke-width="2"/>
+          <text x="664" y="180" font-size="15" font-weight="600" fill="var(--leaf)">OpenFGA's own changelog table</text>
+          <text x="664" y="206" font-size="12" class="mono-t" fill="var(--ink)">store_id — which OpenFGA store</text>
+          <text x="664" y="226" font-size="12" class="mono-t" fill="var(--ink)">user, relation, object — the tuple</text>
+          <text x="664" y="246" font-size="12" class="mono-t" fill="var(--ink)">operation — insert (grant) / delete (revoke)</text>
+          <text x="664" y="266" font-size="12" class="mono-t" fill="var(--ink)">high-precision timestamp</text>
+          <rect x="640" y="322" width="480" height="58" rx="0" fill="var(--leaf)" opacity=".14"/>
+          <text x="664" y="346" font-size="12" fill="var(--leaf)" font-weight="700">ANSWERS</text>
+          <text x="664" y="365" font-size="12.5" fill="var(--ink)">Exactly when was this permission granted or revoked?</text>
+        </svg>
+      </figure>
+      <div class="two-col-cards" style="margin-top:14px;">
+        <div class="example-block">
+          <span class="ex-label">Example row — audit_events</span>
+          <p class="mono">action: grant · resource: zone:north · result: success · actor: user:admin</p>
         </div>
-        <div class="card" style="background:var(--leaf-soft); border-color:var(--leaf);">
-          <h3 style="color:var(--leaf);">OpenFGA's own changelog table</h3>
-          <ul style="color:var(--ink);">
-            <li><span class="mono">store_id</span> — which OpenFGA store</li>
-            <li><span class="mono">user, relation, object</span> — the tuple</li>
-            <li><span class="mono">operation</span> — insert (grant) vs delete (revoke)</li>
-            <li>high-precision timestamp</li>
-          </ul>
-          <div class="answer-line">Answers: <b>when was this exact permission granted or revoked?</b></div>
+        <div class="example-block">
+          <span class="ex-label">Example row — OpenFGA changelog</span>
+          <p class="mono">store_id: hierarchy-poc · tuple: (user:john, viewer, zone:north) · operation: write</p>
         </div>
       </div>
-      <div class="card" style="margin-top:20px; background:var(--accent-2-soft); border-color:var(--accent-2);">
-        <h3 style="color:var(--accent-2);">One OpenFGA deployment, many applications</h3>
-        <ul style="color:var(--ink);">
-          <li>Each application (or environment) gets its own <span class="mono">store_id</span> — fully isolated data</li>
-          <li>Each store can run its own authorization model — apps don't share a model</li>
-          <li>A mobile app plugs in the same way: same OpenFGA API, its own store_id / model_id</li>
-          <li>Onboarding a new application needs zero changes to OpenFGA itself</li>
-        </ul>
+
+      <figure style="margin-top:22px;">
+        <svg viewBox="0 0 1160 220" width="100%" role="img" aria-label="One OpenFGA deployment serves multiple applications, each isolated by its own store_id and its own authorization model.">
+          <defs>
+            <marker id="appArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor"/></marker>
+          </defs>
+          <rect x="470" y="14" width="220" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="580" y="45" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--accent)">One OpenFGA deployment</text>
+
+          <g fill="none" stroke="currentColor" stroke-width="1.8" color="var(--ink-faint)">
+            <path d="M520,66 C 380,100 220,100 160,140" marker-end="url(#appArrow)"/>
+            <path d="M580,66 V140" marker-end="url(#appArrow)"/>
+            <path d="M640,66 C 780,100 940,100 1000,140" marker-end="url(#appArrow)"/>
+          </g>
+
+          <rect x="40" y="140" width="240" height="66" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="160" y="166" text-anchor="middle" font-size="13" font-weight="600" fill="var(--accent-2)">This app</text>
+          <text x="160" y="186" text-anchor="middle" font-size="11" class="mono-t" fill="var(--accent-2)">store_id: hierarchy-poc</text>
+
+          <rect x="460" y="140" width="240" height="66" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2"/>
+          <text x="580" y="166" text-anchor="middle" font-size="13" font-weight="600" fill="var(--accent-2)">Mobile app</text>
+          <text x="580" y="186" text-anchor="middle" font-size="11" class="mono-t" fill="var(--accent-2)">store_id: mobile-app</text>
+
+          <rect x="880" y="140" width="240" height="66" rx="10" fill="var(--accent-2-soft)" stroke="var(--accent-2)" stroke-width="2" stroke-dasharray="5 5"/>
+          <text x="1000" y="166" text-anchor="middle" font-size="13" font-weight="600" fill="var(--accent-2)">Next app…</text>
+          <text x="1000" y="186" text-anchor="middle" font-size="11" class="mono-t" fill="var(--accent-2)">store_id: (new)</text>
+        </svg>
+        <figcaption>Each store is fully isolated data and its own authorization model — onboarding a new application needs zero changes to OpenFGA itself.</figcaption>
+      </figure>
+      <div class="example-block" style="margin-top:12px;">
+        <span class="ex-label">Example</span>
+        <p>A mobile inspection app plugs into the same OpenFGA deployment with <span class="mono">store_id: mobile-app</span> and its own model — no shared model, no downtime for the existing <span class="mono">hierarchy-poc</span> store.</p>
       </div>
     </div>
   </section>
@@ -987,48 +1015,135 @@
       <div class="slide-head">
         <p class="kicker">Operations &amp; roadmap</p>
         <h1 class="slide-title">Future foreseeable changes — how we tackle them</h1>
-        <p class="slide-sub">Two kinds of change we expect, and the playbook for each.</p>
+        <p class="slide-sub">Three kinds of change we expect, and the playbook for each.</p>
       </div>
-      <div class="grid-2">
-        <div class="flow-col">
-          <span class="tag blue" style="align-self:flex-start; margin-bottom:8px;">Category A</span>
+      <div class="scenario-row">
+        <div class="flow-col scenario-col">
+          <span class="tag blue" style="align-self:flex-start; margin-bottom:8px;">Scenario A</span>
           <div class="flow-box" style="background:var(--accent-2-soft); border-color:var(--accent-2);">
-            <h4 style="color:var(--accent-2);">New / changed data on an existing table</h4>
-            <p>client, project, structure, …</p>
+            <h4 style="color:var(--accent-2);">Adding metadata to an existing table</h4>
+            <p>A new or changed field on client, project, or structure — not a new resource type.</p>
           </div>
           <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
           <div class="flow-box" style="background:var(--good-soft); border-color:var(--good);">
             <h4 style="color:var(--good);">No authorization model change needed</h4>
-            <p>It's just a migration in the application DB where that data actually belongs. OpenFGA tuples/model stay untouched.</p>
+            <p>It's just a migration in the application DB where that data belongs. OpenFGA tuples/model stay untouched.</p>
           </div>
-          <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
-          <div class="flow-box" style="background:var(--surface-2);">
-            <p>Very small changes? Just migrate the extra column into the same table — no bigger change required.</p>
+          <div class="example-block">
+            <span class="ex-label">Example</span>
+            <p>Add a <span class="mono">region_code</span> column to <span class="mono">projects</span> — a one-column migration, zero OpenFGA changes.</p>
           </div>
         </div>
-        <div class="flow-col">
-          <span class="tag blue" style="align-self:flex-start; margin-bottom:8px;">Category B</span>
+        <div class="flow-col scenario-col">
+          <span class="tag blue" style="align-self:flex-start; margin-bottom:8px;">Scenario B</span>
           <div class="flow-box" style="background:var(--accent-2-soft); border-color:var(--accent-2);">
             <h4 style="color:var(--accent-2);">A new hierarchy or client joins us</h4>
           </div>
           <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
-          <div class="flow-fork">
-            <div class="flow-box" style="background:var(--leaf-soft); border-color:var(--leaf);">
-              <h4 style="color:var(--leaf);">1 — Same hierarchy shape</h4>
-              <p>Different naming, or a different number of nested zone levels.</p>
-              <p style="margin-top:6px; color:var(--leaf);">→ Reuse the existing OpenFGA store + model: add the new client/zones as new objects &amp; tuples.</p>
+          <div class="flow-box" style="background:var(--leaf-soft); border-color:var(--leaf);">
+            <h4 style="color:var(--leaf);">1 — Same hierarchy shape</h4>
+            <p>Different naming, or a different number of nested zone levels.</p>
+            <p style="margin-top:6px; color:var(--leaf);">→ Reuse the existing OpenFGA store + model: add the new client/zones as new objects &amp; tuples.</p>
+            <div class="example-block">
+              <span class="ex-label">Example</span>
+              <p>A new client, "Govt of Nepal," reusing the same Client → Project → Zone → Structure shape.</p>
             </div>
-            <div class="flow-box" style="background:var(--accent-soft); border-color:var(--accent);">
-              <h4 style="color:var(--accent);">2 — Genuinely new shape</h4>
-              <p>A business structure this model doesn't fit at all.</p>
-              <p style="margin-top:6px; color:var(--accent);">→ Design a new OpenFGA authorization model, its own store for that hierarchy type.</p>
+          </div>
+          <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
+          <div class="flow-box" style="background:var(--accent-soft); border-color:var(--accent);">
+            <h4 style="color:var(--accent);">2 — Genuinely new shape</h4>
+            <p>A business structure this model doesn't fit at all.</p>
+            <p style="margin-top:6px; color:var(--accent);">→ Design a new OpenFGA authorization model, its own store for that hierarchy type.</p>
+            <div class="example-block">
+              <span class="ex-label">Example</span>
+              <p>A flat retail chain — Client → Store → Till — with no zones at all.</p>
             </div>
+          </div>
+        </div>
+        <div class="flow-col scenario-col">
+          <span class="tag violet" style="align-self:flex-start; margin-bottom:8px;">Scenario C</span>
+          <div class="flow-box" style="background:var(--accent-2-soft); border-color:var(--accent-2);">
+            <h4 style="color:var(--accent-2);">A new application joins us</h4>
+            <p>A different application entirely — not a new client inside this one.</p>
+          </div>
+          <svg class="flow-arrow" width="18" height="26" viewBox="0 0 18 26"><path d="M9 0v18M2 14l7 8 7-8" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
+          <div class="flow-box" style="background:var(--good-soft); border-color:var(--good);">
+            <h4 style="color:var(--good);">Zero changes to OpenFGA itself</h4>
+            <p>The new app gets its own <span class="mono">store_id</span> and can define its own authorization model — fully isolated from ours.</p>
+          </div>
+          <div class="example-block">
+            <span class="ex-label">Example</span>
+            <p>A mobile inspection app plugs into the same OpenFGA deployment with <span class="mono">store_id: mobile-app</span> — no shared model, no downtime for us.</p>
           </div>
         </div>
       </div>
       <div class="note" style="margin-top:20px;">
-        <b style="color:var(--ink);">Audit &amp; logging safety net</b> — OpenFGA's own changelog + our <span class="mono">audit_events</span> table record every grant/revoke and every zone/structure change across all outcomes above, so we can always trace what changed, when, and why.
+        <b style="color:var(--ink);">Audit &amp; logging safety net</b> — OpenFGA's own changelog + our <span class="mono">audit_events</span> table record every grant/revoke and every zone/structure change across all three scenarios above, so we can always trace what changed, when, and why.
       </div>
+    </div>
+  </section>
+
+  <!-- 14b OPENFGA SDK -->
+  <section class="slide" data-title="OpenFGA SDK — Core Calls" data-group="Operations & roadmap">
+    <div class="slide-inner">
+      <div class="slide-head">
+        <p class="kicker">Operations &amp; roadmap · SDK</p>
+        <h1 class="slide-title">The OpenFGA SDK — four calls, every language</h1>
+        <p class="slide-sub">Official client libraries just wrap the same HTTP/gRPC API. Whatever language a service is written in, it talks to OpenFGA through these four primitives.</p>
+      </div>
+
+      <div class="legend-row" style="justify-content:flex-start; margin-top:0;">
+        <span class="tag blue">Node.js</span>
+        <span class="tag blue">Python</span>
+        <span class="tag blue">Go</span>
+        <span class="tag blue">Java</span>
+        <span class="tag blue">.NET</span>
+        <span class="tag neutral">HTTP / gRPC</span>
+      </div>
+
+      <div class="pipeline" style="margin-top:26px;">
+        <div class="stage">
+          <span class="stage-num">STAGE 1</span>
+          <span class="stage-title">Configure client</span>
+          <div class="mini-card">
+            <div class="ep"><span class="endpoint"><span class="verb">NEW</span>OpenFgaClient()</span></div>
+            <p>Point it at a store (+ optional model id), the API URL, and credentials.</p>
+            <div class="evidence">apiUrl · storeId · authorizationModelId</div>
+          </div>
+          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
+        </div>
+        <div class="stage">
+          <span class="stage-num">STAGE 2</span>
+          <span class="stage-title">Write</span>
+          <div class="mini-card">
+            <div class="ep"><span class="endpoint"><span class="verb">POST</span>/write</span></div>
+            <p>Create or delete relationship tuples — this is how a grant or revoke happens.</p>
+            <div class="evidence">writes: [ user, relation, object ]</div>
+          </div>
+          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
+        </div>
+        <div class="stage">
+          <span class="stage-num">STAGE 3</span>
+          <span class="stage-title">Check</span>
+          <div class="mini-card">
+            <div class="ep"><span class="endpoint"><span class="verb">POST</span>/check</span></div>
+            <p>The core question: is this user related to this object, this way? A yes/no.</p>
+            <div class="evidence">&#123; "allowed": true &#125;</div>
+          </div>
+          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>
+        </div>
+        <div class="stage">
+          <span class="stage-num">STAGE 4</span>
+          <span class="stage-title">List / Expand</span>
+          <div class="mini-card">
+            <div class="ep"><span class="endpoint"><span class="verb">POST</span>/list-objects</span></div>
+            <p>The other direction: what can this user see, or who can see this object.</p>
+            <div class="evidence">list-objects · list-users · expand</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="footline">Same four calls in every SDK, only the syntax changes — this is the surface any new service integrates against to add authorization.</p>
     </div>
   </section>
 
@@ -1040,74 +1155,24 @@
         <h1 class="slide-title">Future plans</h1>
         <p class="slide-sub">What we'll demo next, after this hierarchy + authorization PoC.</p>
       </div>
+      <div style="display:flex; flex-direction:column; gap:20px;">
         <div class="big-step" style="background:var(--leaf-soft); border-color:var(--leaf);">
           <span class="num" style="color:var(--leaf);">01</span>
           <div>
             <h3 style="color:var(--leaf);">Stress-test at scale</h3>
-            <p>Push the model past the happy path and put hard numbers behind it — latency, response size, and volume limits, not just correctness.</p>
-            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
-              <span class="tag amber">Runtime permission writes</span>
-              <span class="tag amber">Multiple Project</span>
-              <span class="tag amber">Large-scale reverse resource lookup</span>
-              <span class="tag amber">High-volume authorization checks</span>
-              <span class="tag amber">Complex cross-resource relationships</span>
-            </div>
           </div>
         </div>
-      <div style="display:flex; flex-direction:column; gap:20px;">
         <div class="big-step" style="background:var(--accent-2-soft); border-color:var(--accent-2);">
           <span class="num" style="color:var(--accent-2);">02</span>
           <div>
             <h3 style="color:var(--accent-2);">Integrate into datalake-api-core</h3>
-            <p>Port this OpenFGA ReBAC hierarchy + authorization pattern into datalake-api-core. Run it side-by-side with real data pulled from the Gold layer (not seeded demo data), to validate the model and the tree / per-structure checks against production-shaped data.</p>
-          </div>
+           </div>
         </div>
         <div class="big-step" style="background:var(--accent-soft); border-color:var(--accent);">
           <span class="num" style="color:var(--accent);">03</span>
           <div>
             <h3 style="color:var(--accent);">API version control on datalake-api-core</h3>
-            <p>Introduce versioning on datalake-api-core's APIs (e.g. /v1, /v2) so the authorization model and hierarchy endpoints can evolve without breaking existing clients.</p>
           </div>
-        </div>
-      </div>
-      <div class="footline" style="display:flex; align-items:center; gap:12px; margin-top:22px; flex-wrap:wrap;">
-        <span class="tag blue">Phase 1 · integration + Gold layer data</span>
-        <svg width="20" height="14" viewBox="0 0 20 14"><path d="M0 7h16M11 1l6 6-6 6" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
-        <span class="tag violet">Phase 2 · versioning</span>
-        <svg width="20" height="14" viewBox="0 0 20 14"><path d="M0 7h16M11 1l6 6-6 6" fill="none" stroke="var(--ink-faint)" stroke-width="2"/></svg>
-        <span class="tag amber">Phase 3 · stress &amp; scale testing</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- 16 INTEGRATION PATTERN -->
-  <section class="slide" data-title="Suggestion Required — How Should Services Call OpenFGA?" data-group="Operations & roadmap">
-    <div class="slide-inner">
-      <div class="slide-head">
-        <p class="kicker">Operations &amp; roadmap</p>
-        <h1 class="slide-title">Suggestion required — how should services call OpenFGA?</h1>
-        <p class="slide-sub">Five integration shapes on the table, and which combination we'd recommend.</p>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:12px;">
-        <div class="int-row" style="--stripe:var(--accent-2);">
-          <span class="int-num">1</span>
-          <div class="int-body"><h3>Separate service (centralized)</h3><p>One shared OpenFGA deployment (its own store per app) that every consuming service reaches over the network. This is what's already running today.</p></div>
-        </div>
-        <div class="int-row" style="--stripe:var(--bad);">
-          <span class="int-num">2</span>
-          <div class="int-body"><h3>Sidecar</h3><p>An OpenFGA process co-located with each app instance (e.g. same pod). Adds a deployment per instance and fights the "one store per app" model.</p></div>
-        </div>
-        <div class="int-row" style="--stripe:var(--border);">
-          <span class="int-num">3</span>
-          <div class="int-body"><h3>Inter-service call</h3><p>Any service reaches OpenFGA the same way it reaches another internal service. Not a distinct topology — it's option 1, described from the caller's side.</p></div>
-        </div>
-        <div class="int-row" style="--stripe:var(--accent);">
-          <span class="int-num">4</span>
-          <div class="int-body"><h3>Middleware</h3><p>The authorization check wired into each app's request pipeline (e.g. a FastAPI dependency), so routes never hand-roll checks. An app-side detail, not a topology.</p></div>
-        </div>
-        <div class="int-row" style="--stripe:var(--accent);">
-          <span class="int-num">5</span>
-          <div class="int-body"><h3>Embedded client (shared library)</h3><p>A thin SDK wrapper — like this PoC's <span class="mono">app/authorization/service.py</span> — that every service imports directly, instead of each team reinventing check/grant calls.</p></div>
         </div>
       </div>
     </div>
